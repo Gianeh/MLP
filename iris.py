@@ -43,13 +43,13 @@ test_data = data[150:, :4]
 test_target = data[150:, 4:].reshape(-1, 1)
 
 # create the network
-net = MLP(4, 3, [5], activation="sigmoid", loss="categorical_crossentropy", log_rate=50)
+net = MLP(4, 3, [4], activation="sigmoid", loss="categorical_crossentropy", log_rate=50)
 
 # print the network
 net.print_net()
 
 # train the network
-net.train(train_data, train_target, batch_size=50, epochs=400000, lr=0.1)
+net.train(train_data, train_target, batch_size=50, epochs=40000, lr=0.042)
 
 # try to predict 6.2,3.4,5.4,2.3,Iris-virginica
 O = net.predict(np.array([[6.2,3.4,5.4,2.3]]))  # note, the double square brackets are needed to create a 2D array and treat it as a batch of 1 element

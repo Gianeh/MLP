@@ -48,6 +48,8 @@ class MLP:
             if self.num_output <= 2:
                 raise ValueError("Invalid loss function for the given number of outputs, use binary_crossentropy instead")
             return self.categorical_crossentropy
+        elif loss == "mae":
+            return self.mae
         else:
             raise ValueError("Invalid loss function")
     
@@ -63,6 +65,10 @@ class MLP:
         return 1 / (1.0 + np.exp(-A)) if not grad else self.sigmoid(A) * (1.0 - self.sigmoid(A))
     
     # Loss functions:
+
+    def mae(self, OL, y, grad=False):
+        diff = OL - y
+        return np.mean(np.abs(diff)) if not grad else np.sign(diff) / y.shape[0]
 
     def binary_crossentropy(self, OL, y, grad=False):
         epsilon = 1e-15  # Small constant to avoid numerical instability
