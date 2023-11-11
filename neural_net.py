@@ -40,6 +40,14 @@ class MLP:
     def init_loss(self, loss):
         if loss == "mse":
             return self.mse
+        elif loss == "binary_crossentropy":
+            if self.num_output == 1 or self.num_output > 2:
+                raise ValueError("Invalid loss function for the given number of outputs")
+            return self.binary_crossentropy
+        elif loss == "categorical_crossentropy":
+            if self.num_output <= 2:
+                raise ValueError("Invalid loss function for the given number of outputs, use binary_crossentropy instead")
+            return self.categorical_crossentropy
         else:
             raise ValueError("Invalid loss function")
     
@@ -55,6 +63,28 @@ class MLP:
         return 1 / (1.0 + np.exp(-A)) if not grad else self.sigmoid(A) * (1.0 - self.sigmoid(A))
     
     # Loss functions:
+
+    def binary_crossentropy(self, OL, y, grad=False):
+        epsilon = 1e-15  # Small constant to avoid numerical instability
+        clipped_OL = np.clip(OL, epsilon, 1 - epsilon)  # Clip values to avoid log(0) or log(1)
+        
+        if not grad:
+            loss = -np.mean(y * np.log(clipped_OL) + (1.0 - y) * np.log(1.0 - clipped_OL))
+        else:
+            loss = (clipped_OL - y) / (clipped_OL * (1.0 - clipped_OL) + epsilon)
+        
+        return loss
+    
+    def categorical_crossentropy(self, OL, y, grad=False):
+        epsilon = 1e-15 # Small constant to avoid numerical instability
+        clipped_OL = np.clip(OL, epsilon, 1 - epsilon) # Clip values to avoid log(0) or log(1)
+
+        if not grad:
+            loss = -np.mean(y * np.log(clipped_OL))
+        else:
+            loss = (clipped_OL - y) / (clipped_OL * (1.0 - clipped_OL) + epsilon)
+        
+        return loss
 
     def mse(self, OL, y, grad=False):
         diff = OL - y
@@ -110,6 +140,7 @@ class MLP:
                 self.update(G, lr=lr)
             if epoch % self.log_rate == 0:
                 print(f"Epoch {epoch} - Loss: {self.loss(O[-1], y[i:i+batch_size])}")
+
     def predict(self, X):
         O, _ = self.forward(X)
         return O[-1]

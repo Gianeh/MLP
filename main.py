@@ -9,8 +9,8 @@ for i in range(10000):
     x1 = np.random.randint(0, 2)
     x2 = np.random.randint(0, 2)
     # add some noise to the data
-    x1 = np.random.normal(x1, 0.1)
-    x2 = np.random.normal(x2, 0.1)
+    x1 = np.random.normal(x1, 0.05)
+    x2 = np.random.normal(x2, 0.05)
     # add the data to the dataset
     data.append([x1, x2, int(round(x1) ^ round(x2))])
 data = np.array(data)
@@ -36,13 +36,13 @@ print(train_data.shape)
 print(train_data)
 
 # create the network
-net = MLP(2, 1, [5], activation="sigmoid", loss="mse", log_rate=5)
+net = MLP(2, 1, [2,4], activation="sigmoid", loss="mse", log_rate=50)
 
 # print the network
 net.print_net()
 
 # train the network
-net.train(train_data, train_target, batch_size=100, epochs=2000, lr=0.1)
+net.train(train_data, train_target, batch_size=500, epochs=20000, lr=0.1)
 
 # test the network
 O = net.predict(np.array([1,1]))
