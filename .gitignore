@@ -1,2 +1,4 @@
 # Ignore Python build artifacts
 __pycache__/
+#è il mio virtual environment (fabrizio)
+NNF
