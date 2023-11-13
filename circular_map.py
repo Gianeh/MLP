@@ -59,4 +59,5 @@ plt.scatter(map[:, 0], map[:, 1], c=colors)
 
 # plot data
 plt.scatter(data[:, 0], data[:, 1], c=data[:, 2])
+plt.show()
 plt.savefig("circle.png")
