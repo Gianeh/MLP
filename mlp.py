@@ -1,16 +1,17 @@
-#class MLP is designed to process row vector input and target, in gegneral MLP takes as input a matrix where each row is one train sample
+#class MLP is designed to process row vector input and target, in general MLP takes as input a matrix where each row is one train sample
 #and as target a matrix where each row is one target vector
 
 #internally every calculation is treated according to the conventional algebraic rules (reshaping of the input arguments passed to the net)
-#where each input is a column vector (forming a matrix for multiple samples) and produce an output that is a column vector too
+#where each input is a column vector (forming a matrix for multiple samples) that produce an output that is a column vector too
 #in order to compute the loss, error calculation is the difference between two column vectors (online learning) or between two matrices (mini-batch or full-batch)
 #so also the targets need to be treated as column vectors possibly forming a matrix for (mini/full-batch)
 
 
 import numpy as np
+import pickle
 
 class MLP:
-    def __init__(self, num_input, layers =[], loss = "mse", log_rate = 100 ):
+    def __init__(self, num_input, layers =[], loss = "mse", log_rate = 100):
 
         self.num_input = num_input
         self.layers = layers
@@ -25,7 +26,7 @@ class MLP:
 
 
 
-#init_net initialize according to the normal distribution all the weight matrices and all the bias vectors according to the standard algebraic rules
+#init_net initialize according to the normal distribution all the matrices weights and all the bias vectors according to the standard algebraic rules
 #furthermore at the end of the loop over all the layers, it initializes the lists of outputs and activations of the net, for each layer as None value
 
     def init_net(self):
@@ -35,7 +36,7 @@ class MLP:
                     np.random.randn(self.layers[i][0], self.num_input),
                     np.random.randn(self.layers[i][0],1)
                 ))
-            elif i < len(self.layers):
+            elif i < len(self.layers):      #in this case else is equivalent to elif(condition)
                 self.net.append((
                     np.random.randn(self.layers[i][0], self.layers[i-1][0]),
                     np.random.randn(self.layers[i][0],1)
@@ -74,7 +75,7 @@ class MLP:
 
 
 
-#The sigmoid activation function is an element-wise function that takes as input the activation column vector (for batch is a matrix), where:
+#The sigmoid activation function is an element-wise function that takes as input the activation column vector (for a batch is a matrix), where:
 #if grad=False return a column vector too that has for each component the sigmoidal computation of the corresponding argument component
 #if grad=True return a column vector where the component i is sigmoid(A[i]) * (1.0-sigmoid(A[i]))
 #Remark: input A and output have always the same dimensions
@@ -93,7 +94,7 @@ class MLP:
     def relu(self, A, grad=False):
         output = np.zeros(A.shape)
         if not grad:
-            for col in range(0, output.shape[1]):
+            for col in range(0, output.shape[1]):                   
                 for row in range(0, output.shape[0]):
                     output[row][col] = max(0.0, A[row][col])
             return output
@@ -105,8 +106,9 @@ class MLP:
 
 
 #Leaky Relu activation function initialize with all zeros a tensor called output that has the same dimensions as the activation tensor argument (A)
-# if grad=False return a tensor where each component is computed by the leaky relu scalar function (y=f(x) -> y=x if x>=0 and y=mx if x<0 where m is negative_slope variable)
+#if grad=False return a tensor where each component is computed by the leaky relu scalar function (y=f(x) -> y=x if x>=0 and y=mx if x<0 where m is negative_slope variable)
 #if grad=True return a tensor where each component is neg_slope or 1 (derivative of leaky relu is neg_slope for negative activation value and 1 for null or positive value)
+    
     def leaky_relu(self, A, neg_slope=0.01 ,grad=False):
         output = np.zeros(A.shape)
         if not grad:
@@ -124,6 +126,7 @@ class MLP:
 #The hyperbolic tangent activation function is an element-wise function that takes as input the activation column vector (for batch is a matrix), where:
 #if grad=False return a column vector too that has for each component the tanh computation of the corresponding argument component
 #if grad=True return a column vector where each component is ->  1 - (tanh(a)^2)
+   
     def tanh(self, A, grad=False):
         if not grad:
             return (np.exp(A) - np.exp(-A)) / (np.exp(A) + np.exp(-A))
@@ -135,6 +138,7 @@ class MLP:
 #it is assumed that this activation is used only in output layer in combination with categorical categorical crossentropy loss
 #given this assumption, it is not necessary to calculate the derivative of the activation function since it is integrated into the
 #derivative of the loss function (not included in the loss code, but taken into account in the backward and train method)
+   
     def softmax(self, A):
         output = np.zeros(A.shape)
         for col in range(0, output.shape[1]):
@@ -146,6 +150,7 @@ class MLP:
 
 
 #Linear activation function
+    
     def linear(self, A, grad=False):
         if not grad:
             return A
@@ -175,6 +180,7 @@ class MLP:
 #Remark: note that in this implementation the natural logarithm is used
 #***Remark*** : It is not necessary to define the derivative of the loss since, for the same reasons as the softmax activation, it is assumed that softmax and categorical crossentropy
 #are used exclusively together, and therefore the derivative of the loss is taken into account in the calculation of the output layer delta in the backward method (and train method too)
+    
     def categorical_crossentropy(self, OL, y):
         epsilon = 1e-15  # Small constant to avoid numerical instability
         clipped_OL = np.clip(OL, epsilon, 1 - epsilon)  # Clip values to avoid log(0) or log(1)
@@ -282,6 +288,17 @@ class MLP:
         O, _ = self.forward(X)
         return self.loss(O[-1], Y)
 
+
+    def save_model(self, model_name = "model"):
+        with open(model_name+".pkl", "wb") as file:
+            pickle.dump(self.net, file)
+        print(f"Model saved as {model_name}.pkl")
+
+
+    def load_model(self, model_name = "model"):
+        with open(model_name+".pkl", "rb") as file:
+            self.net = pickle.load(file)
+        print(f"Model loaded from {model_name}.npz")
 
 
     def print_net(self):
