@@ -1,4 +1,4 @@
-from MLP2 import MLP
+from mlp import MLP
 import numpy as np
 
 data_X = np.array([[0.0342810297940277, 0.861838599030015],

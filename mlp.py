@@ -10,16 +10,16 @@
 import numpy as np
 
 class MLP:
-    def __init__(self, num_input, hidden_layers =[], loss = "mse", log_rate = 100 ):
+    def __init__(self, num_input, layers =[], loss = "mse", log_rate = 100 ):
 
         self.num_input = num_input
-        self.hidden_layers = hidden_layers
+        self.layers = layers
         self.net = []
         self.outputs = []
         self.activations = []
         self.init_net()
         self.loss = self.init_loss(loss)
-        self.activation_functions = self.init_activation_functions(hidden_layers)
+        self.activation_functions = self.init_activation_functions(layers)
         self.log_rate = log_rate
         self.loss_name = loss
 
@@ -29,19 +29,19 @@ class MLP:
 #furthermore at the end of the loop over all the layers, it initializes the lists of outputs and activations of the net, for each layer as None value
 
     def init_net(self):
-        for i in range(len(self.hidden_layers)):
+        for i in range(len(self.layers)):
             if i == 0:
                 self.net.append((
-                    np.random.randn(self.hidden_layers[i][0], self.num_input),
-                    np.random.randn(self.hidden_layers[i][0],1)
+                    np.random.randn(self.layers[i][0], self.num_input),
+                    np.random.randn(self.layers[i][0],1)
                 ))
-            elif i < len(self.hidden_layers):
+            elif i < len(self.layers):
                 self.net.append((
-                    np.random.randn(self.hidden_layers[i][0], self.hidden_layers[i-1][0]),
-                    np.random.randn(self.hidden_layers[i][0],1)
+                    np.random.randn(self.layers[i][0], self.layers[i-1][0]),
+                    np.random.randn(self.layers[i][0],1)
                 ))
-        self.outputs = [None] * (len(self.hidden_layers))
-        self.activations = [None] * (len(self.hidden_layers))
+        self.outputs = [None] * (len(self.layers))
+        self.activations = [None] * (len(self.layers))
 
 
     def init_loss(self, loss):
@@ -53,9 +53,9 @@ class MLP:
             raise ValueError("Invalid loss function")
 
 
-    def init_activation_functions(self, hidden_layers):
+    def init_activation_functions(self, layers):
         activation_functions = []
-        for layer in hidden_layers:
+        for layer in layers:
             if layer[1] == "sigmoid":
                 activation_functions.append(self.sigmoid)
             elif layer[1] == "relu":
@@ -210,7 +210,7 @@ class MLP:
         G = [None] * L
         for l in range(L-1, -1, -1):
             if l == L-1:
-                if self.hidden_layers[l][1] == "softmax":
+                if self.layers[l][1] == "softmax":
                     Delta = O[-1] - Y
                 else:
                     Delta = self.activation_functions[l](A[l], grad=True) * loss_derivative
@@ -252,7 +252,7 @@ class MLP:
         for epoch in range(epochs):
             for i in range(0, len(X.T), batch_size):
                 O, A = self.forward(X[:,i:i+batch_size])
-                if self.hidden_layers[-1][1] == "softmax":
+                if self.layers[-1][1] == "softmax":
                     G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = 0, Y = Y)
                 else:
                     loss_derivative = self.loss(O[-1], Y[:,i:i+batch_size], grad = True)
@@ -291,7 +291,7 @@ class MLP:
         print("=" * 50 + "\n")
         for l in range(len(self.net)):
             Wl, bl = self.net[l]
-            print(f"Layer {l} --- Neurons: {bl.shape[0]} --- Activation: {self.hidden_layers[l][1]}")
+            print(f"Layer {l} --- Neurons: {bl.shape[0]} --- Activation: {self.layers[l][1]}")
             print(f"W: {Wl.shape} \t b: {bl.shape}\n")
             print(f"W: {Wl}\n")
             print(f"b: {bl}")
@@ -301,10 +301,10 @@ class MLP:
 
     # override some default methods
     def __str__(self):
-        return f"MLP with {len(self.hidden_layers)} hidden layers"
+        return f"MLP with {len(self.layers)} layers"
 
     def __repr__(self):
-        return repr(f"MLP NN (Input : {self.num_input} , Hidden Layers : {self.hidden_layers} , Depht : {len(self.net)} , Loss : {self.loss_name})")
+        return repr(f"MLP NN (Input : {self.num_input} , Layers : {self.layers} , Depht : {len(self.net)} , Loss : {self.loss_name})")
 
     def __call__(self, X):
         return self.predict(X)
