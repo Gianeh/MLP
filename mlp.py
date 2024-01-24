@@ -101,7 +101,7 @@ class MLP:
         else:
             for col in range(0, output.shape[1]):
                 for row in range(0, output.shape[0]):
-                    output[row][col] = 1 if (A[row][col] >= 0) else 0
+                    output[row][col] = 1 if (A[row][col] > 0) else 0
             return output
 
 
