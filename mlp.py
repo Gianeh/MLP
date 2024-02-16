@@ -8,6 +8,7 @@
 
 
 import numpy as np
+import matplotlib.pyplot as plt
 import pickle
 
 class MLP:
@@ -251,10 +252,6 @@ class MLP:
         # if batch size is 0, train on the whole dataset
         if batch_size == 0:
             batch_size = len(X.T)
-        # if batch size is not a multiple of the dataset size, train on the whole dataset and print a warning
-        if len(X.T) % batch_size != 0:
-            print("Warning: batch size is not a multiple of the dataset size. Training on the whole dataset.")
-            batch_size = len(X.T)
         for epoch in range(epochs):
             for i in range(0, len(X.T), batch_size):
                 O, A = self.forward(X[:,i:i+batch_size])
@@ -266,6 +263,7 @@ class MLP:
                 self.update(G, lr=lr)
                 if epoch % self.log_rate == 0:
                     print(f"Epoch {epoch} - Batch {int(i/batch_size)} - Loss: {self.loss(O[-1], Y[:,i:i+batch_size])}")
+
 
 
 
@@ -328,7 +326,6 @@ class MLP:
 
     def __getitem__(self, i):
         return self.net[i]
-
 
 
 
