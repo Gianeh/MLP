@@ -184,7 +184,7 @@ class MLP:
     def categorical_crossentropy(self, OL, y):
         epsilon = 1e-15  # Small constant to avoid numerical instability
         clipped_OL = np.clip(OL, epsilon, 1 - epsilon)  # Clip values to avoid log(0) or log(1)
-        loss = -np.sum(y * np.log(clipped_OL), axis=0)  #natural log is used, for base 10 -> np.log10
+        loss = -np.sum(y * np.log10(clipped_OL), axis=0)  #natural log is used, for base 10 -> np.log10
         loss = np.mean(loss)
         return loss
 
