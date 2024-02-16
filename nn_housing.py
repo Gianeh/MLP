@@ -54,7 +54,7 @@ def normalize_data(X, mean=None, std=None):
 # entry point
 if __name__ == "__main__":
 
-    data_X, data_y = load_data_from_file('housing.data')
+    data_X, data_y = load_data_from_file('./housing/housing.data')
 
     # splitting
     data_X_train, data_y_train, data_X_val, data_y_val, data_X_test, data_y_test = \
@@ -64,12 +64,14 @@ if __name__ == "__main__":
     data_X_train, m, s = normalize_data(data_X_train)
     data_X_val, _, _ = normalize_data(data_X_val, m, s)
     data_X_test, _, _ = normalize_data(data_X_test, m, s)
-
+    #print(data_X_train.shape)
 
     net = MLP(13, [[32, "leaky_relu"],[64, "tanh"],[1, "leaky_relu"]], loss="mse", log_rate=10)
-
+    
     #Training phase
-    #net.train(data_X_train, data_y_train, batch_size=0, epochs=10000, lr=0.0001)
+
+    net.train(data_X_train, data_y_train, batch_size=177, epochs=10000, lr=0.0001)
+    '''
     #net.save_model()
 
     #Evaluation phase
@@ -81,4 +83,4 @@ if __name__ == "__main__":
     for i in range(targets.shape[0]):
         print('Target : ', targets[i][0], ' , Prediction : ' , predictions[0][i], '\n')
 
-
+    '''
