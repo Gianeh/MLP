@@ -80,3 +80,5 @@ if __name__ == "__main__":
 
     for i in range(targets.shape[0]):
         print('Target : ', targets[i][0], ' , Prediction : ' , predictions[0][i], '\n')
+
+
