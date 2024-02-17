@@ -66,11 +66,11 @@ if __name__ == "__main__":
     data_X_test, _, _ = normalize_data(data_X_test, m, s)
     #print(data_X_train.shape)
 
-    net = MLP(13, [[32, "leaky_relu"],[64, "relu"],[1, "leaky_relu"]], loss="mse", log_rate=100)
+    net = MLP(13, [[32, "leaky_relu"],[64, "leaky_relu"],[1, "linear"]], loss="mse", log_rate=50)
     
     #Training phase
 
-    net.train(data_X_train, data_y_train, batch_size=10, epochs=1000, lr=0.00005, X_Val=data_X_val, Y_Val=data_y_val)
+    net.train(data_X_train, data_y_train, batch_size=10, epochs=1500, lr=0.00005, X_Val=data_X_val, Y_Val=data_y_val, early_stopping="loss", patience=100, plot=True)
     net.plot()
     
     #net.save_model()

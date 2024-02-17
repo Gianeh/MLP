@@ -12,8 +12,10 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import pickle
 
+import sys
+
 class MLP:
-    def __init__(self, num_input, layers =[], loss = "mse", log_rate = 100):
+    def __init__(self, num_input, layers =[], loss = "mse", log_rate = 100, gradient_clipping = sys.maxsize):
 
         self.num_input = num_input
         self.layers = layers
@@ -25,6 +27,8 @@ class MLP:
         self.activation_functions = self.init_activation_functions(layers)
         self.log_rate = log_rate
         self.loss_name = loss
+
+        self.gradient_clipping = gradient_clipping
 
         self.epoch_loss = []
         self.epoch_val_loss = []
@@ -38,13 +42,13 @@ class MLP:
         for i in range(len(self.layers)):
             if i == 0:
                 self.net.append((
-                    np.random.randn(self.layers[i][0], self.num_input),
-                    np.random.randn(self.layers[i][0],1)
+                    np.random.uniform(-1,1, size=(self.layers[i][0], self.num_input)),
+                    np.random.uniform(-1,1, size=(self.layers[i][0],1))
                 ))
             elif i < len(self.layers):      #in this case else is equivalent to elif(condition)
                 self.net.append((
-                    np.random.randn(self.layers[i][0], self.layers[i-1][0]),
-                    np.random.randn(self.layers[i][0],1)
+                    np.random.uniform(-1,1, size=(self.layers[i][0], self.layers[i-1][0])),
+                    np.random.uniform(-1,1, size=(self.layers[i][0],1))
                 ))
         self.outputs = [None] * (len(self.layers))
         self.activations = [None] * (len(self.layers))
@@ -243,6 +247,9 @@ class MLP:
         for l in range(len(self.net)):
             Wl, bl = self.net[l]
             Wl_grad, bl_grad = G[l]
+            # clip gradients
+            Wl_grad = np.clip(Wl_grad, -self.gradient_clipping, self.gradient_clipping)
+            bl_grad = np.clip(bl_grad, -self.gradient_clipping, self.gradient_clipping)
             Wl -= lr * Wl_grad
             bl -= lr * bl_grad
             self.net[l] = (Wl, bl)
@@ -250,11 +257,16 @@ class MLP:
 
 #In train method X and Y inputs are transposed in order to process row-element inputs and targets as in the algebraic rule fashion
 
-    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None):
+    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None, plot=False, early_stopping=None, patience=1):
+
+        # adjust maximum gradient_clipping value
+        if lr > 1: self.gradient_clipping /= lr
+
         X=X.T
         Y=Y.T
-        plt.ion()
-        _, ax = plt.subplots()
+        if plot:
+            plt.ion()
+            fig, ax = plt.subplots()
         # if batch size is 0, train on the whole dataset
         if batch_size == 0:
             batch_size = len(X.T)
@@ -273,7 +285,7 @@ class MLP:
 
                 avg_loss += self.loss(O[-1], Y[:,i:i+batch_size])
 
-            self.epoch_loss.append(avg_loss/int(i/(batch_size+1)))
+            self.epoch_loss.append(avg_loss/int(len(X.T)/batch_size))
 
             if X_Val is not None and Y_Val is not None:
                 val_loss = self.evaluate(X_Val, Y_Val)
@@ -281,7 +293,15 @@ class MLP:
                     print(f"Epoch {epoch} - Validation Loss: {val_loss}")
                 self.epoch_val_loss.append(val_loss)
 
-            self.plot(ax = ax)
+            if early_stopping is not None and X_Val is not None and Y_Val is not None:
+                if self.early_stopping(early_stopping, patience):
+                    break
+
+            if epoch % self.log_rate == 0 and plot: self.plot(fig = fig, ax = ax)
+        if plot:
+            plt.close(fig)
+            plt.ioff()
+
 
 
 
@@ -304,6 +324,17 @@ class MLP:
             Y=Y.T
         O, _ = self.forward(X)
         return self.loss(O[-1], Y)
+    
+
+    def early_stopping(self, early_stopping, patience):
+        if not early_stopping in ["loss"]:
+            raise ValueError("Invalid early stopping metric")
+        if len(self.epoch_val_loss) > patience:
+            # if for patience epochs the loss is increasing of more x% stop the training
+            if np.all(np.array(self.epoch_val_loss[-patience+1:]) > np.array(self.epoch_val_loss[-patience])):
+                print(f"Early stopping at epoch {len(self.epoch_val_loss)}")
+                return True
+        return False
 
 
     def save_model(self, model_name = "model"):
@@ -333,11 +364,11 @@ class MLP:
 
 
     # Plot epoch_loss and epoch_val_loss
-    def plot(self, ax=None):
-        if ax is None:
-            _, ax = plt.subplots()
+    def plot(self, fig=None, ax=None):
+        if fig is None:
+            fig, ax = plt.subplots()
              
-        _,ax = plt.gfc(), plt.gfa()
+        #_,ax = plt.gfc(), plt.gfa()
 
         ax.plot(self.epoch_loss, label='Training Loss', color='blue')
         if len(self.epoch_val_loss) == len(self.epoch_loss): ax.plot(self.epoch_val_loss, label='Validation Loss', color='orange')
@@ -357,7 +388,8 @@ class MLP:
         plt.legend(handles=legend_elements, loc='upper right')
 
         # show updates online without blocking the code
-        plt.draw()
+        plt.show()
+        plt.pause(0.0005)
         
 
     # override some default methods
