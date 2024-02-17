@@ -9,6 +9,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import pickle
 
 class MLP:
@@ -24,6 +25,9 @@ class MLP:
         self.activation_functions = self.init_activation_functions(layers)
         self.log_rate = log_rate
         self.loss_name = loss
+
+        self.epoch_loss = []
+        self.epoch_val_loss = []
 
 
 
@@ -246,13 +250,16 @@ class MLP:
 
 #In train method X and Y inputs are transposed in order to process row-element inputs and targets as in the algebraic rule fashion
 
-    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001):
+    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None):
         X=X.T
         Y=Y.T
+        plt.ion()
+        _, ax = plt.subplots()
         # if batch size is 0, train on the whole dataset
         if batch_size == 0:
             batch_size = len(X.T)
         for epoch in range(epochs):
+            avg_loss = 0
             for i in range(0, len(X.T), batch_size):
                 O, A = self.forward(X[:,i:i+batch_size])
                 if self.layers[-1][1] == "softmax":
@@ -263,6 +270,18 @@ class MLP:
                 self.update(G, lr=lr)
                 if epoch % self.log_rate == 0:
                     print(f"Epoch {epoch} - Batch {int(i/batch_size)} - Loss: {self.loss(O[-1], Y[:,i:i+batch_size])}")
+
+                avg_loss += self.loss(O[-1], Y[:,i:i+batch_size])
+
+            self.epoch_loss.append(avg_loss/int(i/(batch_size+1)))
+
+            if X_Val is not None and Y_Val is not None:
+                val_loss = self.evaluate(X_Val, Y_Val)
+                if epoch % self.log_rate == 0:
+                    print(f"Epoch {epoch} - Validation Loss: {val_loss}")
+                self.epoch_val_loss.append(val_loss)
+
+            self.plot(ax = ax)
 
 
 
@@ -313,6 +332,33 @@ class MLP:
             print("=" * 50)
 
 
+    # Plot epoch_loss and epoch_val_loss
+    def plot(self, ax=None):
+        if ax is None:
+            _, ax = plt.subplots()
+             
+        _,ax = plt.gfc(), plt.gfa()
+
+        ax.plot(self.epoch_loss, label='Training Loss', color='blue')
+        if len(self.epoch_val_loss) == len(self.epoch_loss): ax.plot(self.epoch_val_loss, label='Validation Loss', color='orange')
+
+        # Adding labels and legend
+        ax.set_xlabel('Epochs')
+        ax.set_ylabel('Losses')
+        ax.set_title('Training Loss')
+        # add color legend
+
+        legend_elements = [
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='orange', markersize=10, label='Validation Loss'),
+        Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markersize=10, label='Training Loss'),
+        ]
+
+        # Adding legend with custom elements
+        plt.legend(handles=legend_elements, loc='upper right')
+
+        # show updates online without blocking the code
+        plt.draw()
+        
 
     # override some default methods
     def __str__(self):
