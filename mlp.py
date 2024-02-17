@@ -190,6 +190,36 @@ class MLP:
             return (2.0 / Y.shape[0]) * err
 
 
+#The mae loss function calculates the absolute error (scalar) that is the mean over all the dimensions of the absolute value error tensor
+#np.mean(tensor) is equivalent to perform two means over a certain axis np.mean(np.mean(err, axis = 1), axis = 0)
+# if grad = True the method returns a tensor with the same shape of err, where each component is 1 or -1 where each component is normalized
+# by the scalar n (number of elements in the batch == Y.shape[0])
+
+    def mae(self, OL, Y, grad=False):
+        err = OL - Y
+        if not grad:
+            return np.mean(np.abs(err))
+        else:
+            return np.sign(err)/Y.shape[0]
+        
+
+# Binary cross-entropy loss function 
+# Used only if the target is a scalar belonging to {0,1} (the assumption is that the output layer must have only one neuron)
+# if grad = True the method returns a vector (batch mode) or a scalar (online mode) that has the same shape of OL (prediction) and Y (target)
+# all the mathematical operations are element-wise (1-Y as the shape of Y <-- broadcasting ...)
+        
+    def binary_crossentropy(self, OL, Y, grad=False):
+        if not grad:
+            epsilon = 1e-15     # Small value to avoid numerical instability for log(0)
+            OL = np.clip(OL, epsilon, 1 - epsilon)      # Clip predicted values to avoid log(0)
+            return -np.mean(Y * np.log(OL) + (1 - Y) * np.log(1 - OL))
+        else:
+            epsilon = 1e-15  
+            OL = np.clip(OL, epsilon, 1 - epsilon)  
+            return (OL - Y) / (OL * (1 - Y))
+
+
+
 #The categorical crossentropy loss assume 1-hot encoded target for classification task.
 #After limiting the output (OL) in a continuous set (0,1) with extrema excluded, the definition of crossentropy (-np.sum(...))
 #is applied which returns a row vector where each element refers to a training sample.
