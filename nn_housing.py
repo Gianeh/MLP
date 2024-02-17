@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     # splitting
     data_X_train, data_y_train, data_X_val, data_y_val, data_X_test, data_y_test = \
-        create_splits_unbalanced(data_X, data_y, train_val_fractions=[0.7, 0.15])
+        create_splits_unbalanced(data_X, data_y, train_val_fractions=[0.7, 0.15], randomize=True)
 
     # normalizing data
     data_X_train, m, s = normalize_data(data_X_train)
@@ -66,11 +66,11 @@ if __name__ == "__main__":
     data_X_test, _, _ = normalize_data(data_X_test, m, s)
     #print(data_X_train.shape)
 
-    net = MLP(13, [[32, "leaky_relu"],[64, "leaky_relu"],[1, "linear"]], loss="mse", log_rate=50)
-    
+    net = MLP(13, [[32, "sigmoid"],[64, "sigmoid"], [64, "sigmoid"], [64, "sigmoid"],[1, "linear"]], loss="mse", log_rate=50)
+
     #Training phase
 
-    net.train(data_X_train, data_y_train, batch_size=10, epochs=1500, lr=0.00005, X_Val=data_X_val, Y_Val=data_y_val, early_stopping="loss", patience=100, plot=True)
+    net.train(data_X_train, data_y_train, batch_size=0, epochs=30000, lr=0.00005, X_Val=data_X_val, Y_Val=data_y_val, patience=100, plot=True, optimizer="adam")
     net.plot()
     
     #net.save_model()

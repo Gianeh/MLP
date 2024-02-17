@@ -23,12 +23,20 @@ class MLP:
         self.outputs = []
         self.activations = []
         self.init_net()
+
+        # Used with RPROP and ADAM
+        self.prev_G = None
+        self.m = None
+        self.v = None
+
         self.loss = self.init_loss(loss)
         self.activation_functions = self.init_activation_functions(layers)
         self.log_rate = log_rate
         self.loss_name = loss
 
         self.gradient_clipping = gradient_clipping
+
+        self.lr = 0
 
         self.epoch_loss = []
         self.epoch_val_loss = []
@@ -243,24 +251,90 @@ class MLP:
 
 
 
-    def update(self, G, lr=0.001):
+    def update(self, G, lr, optimizer):
+        if optimizer == "basic":
+            lr_interval = [0.01*lr, 10*lr]
+
+            if len(self.epoch_loss) < 2:
+                pass
+            elif self.epoch_loss[-1] > self.epoch_loss[-2]:
+                self.lr = np.clip(self.lr*0.75, lr_interval[0], lr_interval[1])
+            else:
+                self.lr = np.clip(self.lr*1.05, lr_interval[0], lr_interval[1])
+        
+        elif optimizer == "rprop":
+            if self.prev_G is not None:
+                for l in range(len(self.net)):
+                    Wl, bl = self.net[l]
+                    Wl_grad, bl_grad = G[l]
+                    # clip gradients
+                    Wl_grad = np.clip(Wl_grad, -self.gradient_clipping, self.gradient_clipping)
+                    bl_grad = np.clip(bl_grad, -self.gradient_clipping, self.gradient_clipping)
+
+                    Wl_prev_grad, bl_prev_grad = self.prev_G[l]
+                    Wl_sign = np.sign(Wl_grad * Wl_prev_grad)
+                    bl_sign = np.sign(bl_grad * bl_prev_grad)
+                    Wl = Wl + (Wl_sign * lr * np.sign(-Wl_grad))
+                    bl = bl + (bl_sign * lr * np.sign(-bl_grad))
+                    self.net[l] = (Wl, bl)
+            self.prev_G = G
+            return
+        
+        elif optimizer == "adam":
+            beta1 = 0.9
+            beta2 = 0.999
+            epsilon = 1e-8
+            if self.m is None:
+                self.m = []
+                self.v = []
+                for l in self.net:
+                    w, b = l
+                    self.m.append([np.zeros(w.shape), np.zeros(b.shape)])
+                    self.v.append([np.zeros(w.shape), np.zeros(b.shape)])
+
+            for l in range(len(self.net)):
+                Wl, bl = self.net[l]
+                Wl_grad, bl_grad = G[l]
+                
+                # clip gradients
+                Wl_grad = np.clip(Wl_grad, -self.gradient_clipping, self.gradient_clipping)
+                bl_grad = np.clip(bl_grad, -self.gradient_clipping, self.gradient_clipping)
+                
+                self.m[l][0] = beta1 * self.m[l][0] + (1 - beta1) * Wl_grad
+                self.m[l][1] = beta1 * self.m[l][1] + (1 - beta1) * bl_grad
+                self.v[l][0] = beta2 * self.v[l][0] + (1 - beta2) * Wl_grad**2
+                self.v[l][1] = beta2 * self.v[l][1] + (1 - beta2) * bl_grad**2
+                
+                m_hat_w = self.m[l][0] / (1 - beta1)
+                m_hat_b = self.m[l][1] / (1 - beta1)
+                v_hat_w = self.v[l][0] / (1 - beta2)
+                v_hat_b = self.v[l][1] / (1 - beta2)
+
+                Wl -= lr * m_hat_w / (np.sqrt(v_hat_w) + epsilon)
+                bl -= lr * m_hat_b / (np.sqrt(v_hat_b) + epsilon)
+                
+                self.net[l] = (Wl, bl)
+            return
+
+        print(f"Learning rate: {self.lr}")
         for l in range(len(self.net)):
             Wl, bl = self.net[l]
             Wl_grad, bl_grad = G[l]
             # clip gradients
             Wl_grad = np.clip(Wl_grad, -self.gradient_clipping, self.gradient_clipping)
             bl_grad = np.clip(bl_grad, -self.gradient_clipping, self.gradient_clipping)
-            Wl -= lr * Wl_grad
-            bl -= lr * bl_grad
+            #if l == len(self.net)-1: print(Wl_grad , "\n" , bl_grad)
+            Wl -= self.lr * Wl_grad
+            bl -= self.lr * bl_grad
             self.net[l] = (Wl, bl)
 
 
 #In train method X and Y inputs are transposed in order to process row-element inputs and targets as in the algebraic rule fashion
 
-    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None, plot=False, early_stopping=None, patience=1):
-
+    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None, plot=False, early_stopping=None, patience=1, optimizer=None):
+        self.lr = lr
         # adjust maximum gradient_clipping value
-        if lr > 1: self.gradient_clipping /= lr
+        if self.lr > 1: self.gradient_clipping /= self.lr
 
         X=X.T
         Y=Y.T
@@ -270,22 +344,10 @@ class MLP:
         # if batch size is 0, train on the whole dataset
         if batch_size == 0:
             batch_size = len(X.T)
+
+        # Training loop
         for epoch in range(epochs):
             avg_loss = 0
-            for i in range(0, len(X.T), batch_size):
-                O, A = self.forward(X[:,i:i+batch_size])
-                if self.layers[-1][1] == "softmax":
-                    G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = 0, Y = Y)
-                else:
-                    loss_derivative = self.loss(O[-1], Y[:,i:i+batch_size], grad = True)
-                    G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = loss_derivative, Y = 0)
-                self.update(G, lr=lr)
-                if epoch % self.log_rate == 0:
-                    print(f"Epoch {epoch} - Batch {int(i/batch_size)} - Loss: {self.loss(O[-1], Y[:,i:i+batch_size])}")
-
-                avg_loss += self.loss(O[-1], Y[:,i:i+batch_size])
-
-            self.epoch_loss.append(avg_loss/int(len(X.T)/batch_size))
 
             if X_Val is not None and Y_Val is not None:
                 val_loss = self.evaluate(X_Val, Y_Val)
@@ -293,16 +355,34 @@ class MLP:
                     print(f"Epoch {epoch} - Validation Loss: {val_loss}")
                 self.epoch_val_loss.append(val_loss)
 
+            # Batch loop
+            for i in range(0, len(X.T), batch_size):
+                O, A = self.forward(X[:,i:i+batch_size])
+                if self.layers[-1][1] == "softmax":
+                    G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = 0, Y = Y)
+                else:
+                    loss_derivative = self.loss(O[-1], Y[:,i:i+batch_size], grad = True)
+                    G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = loss_derivative, Y = 0)
+                if epoch % self.log_rate == 0:
+                    print(f"Epoch {epoch} - Batch {int(i/batch_size)} - Loss: {self.loss(O[-1], Y[:,i:i+batch_size])}")
+
+                avg_loss += self.loss(O[-1], Y[:,i:i+batch_size])
+
+                self.update(G, lr=lr, optimizer=optimizer)
+
+            self.epoch_loss.append(avg_loss/(len(X.T)/(batch_size+1)))
+
             if early_stopping is not None and X_Val is not None and Y_Val is not None:
                 if self.early_stopping(early_stopping, patience):
                     break
-
+            
+            # Plot current epoch's loss
             if epoch % self.log_rate == 0 and plot: self.plot(fig = fig, ax = ax)
+
+        # Close plot
         if plot:
             plt.close(fig)
             plt.ioff()
-
-
 
 
 
