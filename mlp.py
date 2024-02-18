@@ -447,6 +447,18 @@ class MLP:
                 return True
         return False
 
+    def create_confusion_matrix(self,X,Y):
+        classes = [ None ] * Y.shape[1]
+        for cls in range(len(classes)):
+            tp=0
+            tn=0
+            fp=0
+            fn=0
+            for target_index in range(len(Y[0])): # index([0,0,0,1,0])
+                prediction = self.predict(X=X[target_index],Y=Y[target_index])
+                if np.argmax(Y[target_index]) == np.argmax(prediction):
+                    tp += 1
+
 
     def save_model(self, model_name = "model"):
         with open(model_name+".pkl", "wb") as file:
