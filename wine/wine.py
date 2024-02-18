@@ -1,7 +1,9 @@
+import sys
+sys.path.append("../")
 from mlp import MLP
 import numpy as np
 
-with open("./wine/wine.data", "r") as f:
+with open("./wine.data", "r") as f:
 	lines = f.readlines()  # list of strings
 
 tokens = lines[0].split(',')
