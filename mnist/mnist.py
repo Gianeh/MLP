@@ -61,12 +61,14 @@ net = MLP(784, [[784, "sigmoid"],[784, "sigmoid"], [32, "sigmoid"], [10, "softma
 #net.load_model("mnist_model")
 
 # train the model
-net.train(X=train_images, Y=train_labels, X_Val=test_images, Y_Val=test_labels, batch_size=30000, epochs=10, lr=0.00005, optimizer="adam", plot=True)
+#net.train(X=train_images, Y=train_labels, X_Val=test_images, Y_Val=test_labels, batch_size=30000, epochs=10, lr=0.00005, optimizer="adam", plot=True)
 
 # save the model
 #net.save_model("mnist_model") -
 
+net.print_confusion_matrix(test_images[:10], test_labels[:10], name="test")
 
+'''
 # perform some inference on a portion of the test data and show results
 accuracy = 0
 for test in range(len(test_images)):
@@ -81,4 +83,4 @@ for test in range(len(test_images)):
 
 print("Accuracy: ", accuracy/len(test_images) * 100, "%")
 
-#net.plot()
+#net.plot()'''
