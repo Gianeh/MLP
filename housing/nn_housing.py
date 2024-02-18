@@ -1,4 +1,6 @@
 import numpy as np
+import sys
+sys.path.append("../")
 from mlp import MLP
 
 
@@ -54,7 +56,7 @@ def normalize_data(X, mean=None, std=None):
 # entry point
 if __name__ == "__main__":
 
-    data_X, data_y = load_data_from_file('./housing/housing.data')
+    data_X, data_y = load_data_from_file('./housing.data')
 
     # splitting
     data_X_train, data_y_train, data_X_val, data_y_val, data_X_test, data_y_test = \
@@ -70,8 +72,8 @@ if __name__ == "__main__":
 
     #Training phase
 
-    net.train(data_X_train, data_y_train, batch_size=0, epochs=30000, lr=0.00005, X_Val=data_X_val, Y_Val=data_y_val, patience=100, plot=True, optimizer="adam")
-    net.plot()
+    net.train(data_X_train, data_y_train, batch_size=0, epochs=1000, lr=0.00005, X_Val=data_X_val, Y_Val=data_y_val, patience=100, plot=True, optimizer="adam")
+    net.plot(save=True)
     
     #net.save_model()
     '''

@@ -6,7 +6,8 @@
 #in order to compute the loss, error calculation is the difference between two column vectors (online learning) or between two matrices (mini-batch or full-batch)
 #so also the targets need to be treated as column vectors possibly forming a matrix for (mini/full-batch)
 
-
+import os
+from datetime import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -474,7 +475,7 @@ class MLP:
 
 
     # Plot epoch_loss and epoch_val_loss
-    def plot(self, fig=None, ax=None):
+    def plot(self, save=False, fig=None, ax=None):
         if fig is None:
             fig, ax = plt.subplots()
              
@@ -496,6 +497,11 @@ class MLP:
 
         # Adding legend with custom elements
         plt.legend(handles=legend_elements, loc='upper right')
+
+        if save:
+            if not os.path.exists("./images"):
+                os.makedirs("./images")
+            plt.savefig("./images/loss_plot"+dt.now().strftime('%d-%m-%Y_%H-%M-%S')+".png")
 
         # show updates online without blocking the code
         plt.show()
