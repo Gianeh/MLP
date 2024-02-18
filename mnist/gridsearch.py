@@ -61,29 +61,56 @@ MAX_EPOCHS = 200
 archs = [[784, [800, "a"], [900, "a"], [128, "a"], [10, "softmax"]], [784, [850, "a"], [950, "a"], [156, "a"], [10, "softmax"]], [784 ,[900, "a"], [1000, "a"], [200, "a"], [10, "softmax"]]]
 activations = ["sigmoid", "tanh"]
 optimizers = ["adam"]
-batch_sizes = [0, 10]
+batches = [1, 10]
 
 for arch in archs:
     for a1 in activations:
         for a2 in activations:
             for a3 in activations:
-                architecture = [arch[0], arch[1], arch[2], arch[3]]
-                architecture[1][1] = a1
-                architecture[2][1] = a2
-                architecture[3][1] = a3
-                net = MLP(architecture, loss="categorical_crossentropy", log_rate=1)
+                architecture = [arch[1], arch[2], arch[3], arch[4]]
+                architecture[0][1] = a1
+                architecture[1][1] = a2
+                architecture[2][1] = a3
+                net = MLP(arch[0], architecture, loss="categorical_crossentropy", log_rate=1)
                 for opt in optimizers:
-                    for bs in batch_sizes:
+                    for bs in batches:
+
+                        # parse config files and if one has already trained: continue
+                        skip = False
+                        if os.path.exists("schedule.txt"):
+                            with open("schedule.txt", "r") as f:
+                                lines = f.readlines()
+                                for line in lines:
+                                    if line == f"{arch[1]};{arch[2]};{arch[3]};{a1};{a2};{a3};{opt};{bs}\n":
+                                        print(f"Skipping {arch[1]};{arch[2]};{arch[3]};{a1};{a2};{a3};{opt};{bs}")
+                                        skip = True
+                                if skip: continue
+
                         # SINGLE TRAINING
+                        print(f"Training {arch[1]};{arch[2]};{arch[3]};{a1};{a2};{a3};{opt};{bs}")
                         for i in range(MAX_EPOCHS):
+                            print(f"Epoch {i+1}/{MAX_EPOCHS}")
                             train_indices = np.random.randint(0, train_images.shape[0], 6000)
                             train_data = train_images[train_indices]
                             train_targets = train_labels[train_indices]
                             test_indices = np.random.randint(0, test_images.shape[0], 1000)
                             test_data = test_images[test_indices]
                             test_targets = test_labels[test_indices]
-                            net.train(train_data, train_targets, batch_size=bs, epochs=1, lr=0.0001, X_Val=test_data, Y_Val=test_targets, plot=False, optimizer=opt)
-                        print("Architecture: ", architecture, " Activation functions: ", a1, a2, a3, " Optimizer: ", opt, " Batch size: ", bs, " Loss: ", net.evaluate(test_data, test_targets))
+                            net.train(train_data, train_targets, batch_size=len(train_indices)//bs, epochs=1, lr=0.0001, X_Val=test_data, Y_Val=test_targets, plot=False, optimizer=opt)
+                        print("Architecture: ", architecture, " Activation functions: ", a1, a2, a3, " Optimizer: ", opt, " Batch size: ", bs)
+                        net.plot(save=True, name=f"arch_{arch[1][0]}_{arch[2][0]}_{arch[3][0]}_a1_{a1}_a2_{a2}_a3_{a3}_opt_{opt}_bs_{bs}", show=False)
+                        net.save_model(f"arch_{arch[1][0]}_{arch[2][0]}_{arch[3][0]}_a1_{a1}_a2_{a2}_a3_{a3}_opt_{opt}_bs_{bs}")
+                        with open("schedule.txt", "a") as f:
+                            f.write(f"{arch[1]};{arch[2]};{arch[3]};{a1};{a2};{a3};{opt};{bs}\n")
+                            # measure and save accuracy
+                            accuracy = 0
+                            for test in range(len(test_images)):
+                                pred = net.predict(test_images[test])
+                                if np.argmax(pred) == np.argmax(test_labels[test]):
+                                    accuracy += 1
+                            print(f"Accuracy: {accuracy/len(test_images) * 100}%")
+                            f.write(f"Accuracy: {accuracy/len(test_images) * 100}%\n")
+                    
 
     
 # 4 Hidden layers
