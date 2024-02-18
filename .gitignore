@@ -1,0 +1,6 @@
+# Ignore MNIST files
+__pycache__/
+
+# Ignore Wine files
+
+# Ignore Housing files
