@@ -58,10 +58,10 @@ else:
 net = MLP(784, [[784, "sigmoid"],[784, "sigmoid"], [32, "sigmoid"], [10, "softmax"]], loss="categorical_crossentropy", log_rate=1)
 
 # load the pre-trained model
-net.load_model("mnist_model")
+#net.load_model("mnist_model")
 
 # train the model
-net.train(X=train_images, Y=train_labels, X_Val=test_images, Y_Val=test_labels, batch_size=0, epochs=10, lr=0.00005, optimizer="adam", plot=True)
+net.train(X=train_images, Y=train_labels, X_Val=test_images, Y_Val=test_labels, batch_size=30000, epochs=10, lr=0.00005, optimizer="adam", plot=True)
 
 # save the model
 #net.save_model("mnist_model") -
