@@ -36,6 +36,7 @@ class MLP:
         self.loss_name = loss
 
         self.gradient_clipping = gradient_clipping
+        self.activation_clipping = np.log(sys.maxsize)
 
         self.lr = 0
 
@@ -147,7 +148,9 @@ class MLP:
    
     def tanh(self, A, grad=False):
         if not grad:
-            return (np.exp(A) - np.exp(-A)) / (np.exp(A) + np.exp(-A))
+            return np.tanh(A)
+            # Numpy implementation of tanh trims the value to prevent overflow
+            # return (np.exp(A) - np.exp(-A)) / (np.exp(A) + np.exp(-A))
         else:
             return (1.0 - self.tanh(A)**2)
 

@@ -55,18 +55,18 @@ else:
     test_labels = np.loadtxt("./mnist_test_labels.txt")
 
 # create the model
-net = MLP(784, [[784, "sigmoid"],[784, "sigmoid"], [32, "sigmoid"], [10, "softmax"]], loss="categorical_crossentropy", log_rate=1)
+net = MLP(784, [[784, "tanh"],[784, "sigmoid"], [32, "sigmoid"], [10, "softmax"]], loss="categorical_crossentropy", log_rate=1)
 
 # load the pre-trained model
 #net.load_model("mnist_model")
 
 # train the model
-#net.train(X=train_images, Y=train_labels, X_Val=test_images, Y_Val=test_labels, batch_size=30000, epochs=10, lr=0.00005, optimizer="adam", plot=True)
+net.train(X=train_images[:100], Y=train_labels[:100], X_Val=test_images[:100], Y_Val=test_labels[:100], batch_size=0, epochs=100, lr=0.00005, optimizer="adam", plot=True)
 
 # save the model
 #net.save_model("mnist_model") -
 
-net.print_confusion_matrix(test_images[:10], test_labels[:10], name="test")
+#net.print_confusion_matrix(test_images[:10], test_labels[:10], name="test")
 
 '''
 # perform some inference on a portion of the test data and show results
