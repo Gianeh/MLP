@@ -1,10 +1,8 @@
-#class MLP is designed to process row vector input and target, in general MLP takes as input a matrix where each row is one train sample
-#and as target a matrix where each row is one target vector
+# Class MLP is designed to process row vector input and target, in general MLP takes as input a matrix where each row is one train sample
+# and as target a matrix where each row is one target vector
 
-#internally every calculation is treated according to the conventional algebraic rules (reshaping of the input arguments passed to the net)
-#where each input is a column vector (forming a matrix for multiple samples) that produce an output that is a column vector too
-#in order to compute the loss, error calculation is the difference between two column vectors (online learning) or between two matrices (mini-batch or full-batch)
-#so also the targets need to be treated as column vectors possibly forming a matrix for (mini/full-batch)
+# Internally every calculation is treated according to the conventional algebraic rules (reshaping of the input arguments passed to the net)
+# where each input is a column vector (forming a matrix for multiple samples) that produce an output that is a column vector too
 
 import os
 from datetime import datetime as dt
@@ -12,81 +10,91 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import pickle
-
 import sys
+
 
 class MLP:
     def __init__(self, num_input, layers =[], loss = "mse", log_rate = 100, gradient_clipping = sys.maxsize):
 
-        self.num_input = num_input
-        self.layers = layers
+        self.num_input = num_input                                                          # components number of the input vector
+        self.layers = layers                                                                # layers list (including the output layer) with associated activations
         self.net = []
-        self.outputs = []
-        self.activations = []
-        self.init_net()
+        self.outputs = []                                                                   # outputs list (including the intemediate outputs of the hidden layers)
+        self.activations = []                                                               # activation scores list (including the intemediate activation scores of the hidden layers)
+        self.init_net()                                                                     # network initialization
 
-        # Used with RPROP and ADAM
-        self.prev_G = None
-        self.m = None
-        self.v = None
+        # Class variables used with RPROP and ADAM optimizers
+        self.prev_G = None                  # previous gradient tensor (referring to the previous time step)
+        self.m = None                       # initialization of the first order moment
+        self.v = None                       # initialization of the second order moment
 
-        self.loss = self.init_loss(loss)
-        self.activation_functions = self.init_activation_functions(layers)
-        self.log_rate = log_rate
-        self.loss_name = loss
+        self.loss = self.init_loss(loss)                                                    # loss function initialization
+        self.activation_functions = self.init_activation_functions(layers)                  # activation functions initialization
+        self.log_rate = log_rate                                                            # log frequency in number of epochs
+        self.loss_name = loss                                                               # variable for log purpose
 
-        self.gradient_clipping = gradient_clipping
-        self.activation_clipping = np.log(sys.maxsize)
+        self.gradient_clipping = gradient_clipping                                          # maximum value of each component of the gradient
 
-        self.lr = 0
+        self.lr = 0                                                                         # learning rate initialization (used in update method)
 
-        self.epoch_loss = []
-        self.epoch_val_loss = []
-
+        self.epoch_loss = []                                                                # list of loss values ​​along the epochs on the training set
+        self.epoch_val_loss = []                                                            # list of loss values ​​along the epochs on the validation set
 
 
-#init_net initialize according to the normal distribution all the matrices weights and all the bias vectors according to the standard algebraic rules
-#furthermore at the end of the loop over all the layers, it initializes the lists of outputs and activations of the net, for each layer as None value
+
+# Init_net initialize according to the uniform distribution all the matrices weights and all the bias vectors according the dimensions of the layers involved
+# furthermore at the end of the loop over all the layers, it initializes the lists of outputs and activations of the net, for each layer as None value
 
     def init_net(self):
+        # loop over layers
         for i in range(len(self.layers)):
+            # input layer
             if i == 0:
                 self.net.append((
                     np.random.uniform(-1,1, size=(self.layers[i][0], self.num_input)),
                     np.random.uniform(-1,1, size=(self.layers[i][0],1))
                 ))
-            elif i < len(self.layers):      #in this case else is equivalent to elif(condition)
+            # hidden layer or output layer
+            elif i < len(self.layers):      
                 self.net.append((
                     np.random.uniform(-1,1, size=(self.layers[i][0], self.layers[i-1][0])),
                     np.random.uniform(-1,1, size=(self.layers[i][0],1))
                 ))
-        self.outputs = [None] * (len(self.layers))
-        self.activations = [None] * (len(self.layers))
+    
+        self.outputs = [None] * (len(self.layers))                                          # outputs list initialized as None
+        self.activations = [None] * (len(self.layers))                                      # activations list initialized as None
 
 
+    # Loss function initialization
     def init_loss(self, loss):
-        if loss == "mse":
+        if loss == "mse":                                                                   # mean squared error 
             return self.mse
-        elif loss == "categorical_crossentropy":
+        elif loss == "mae":                                                                 # mean absolute error
+            return self.mae
+        elif loss == "categorical_crossentropy":                                            # categorical crossentropy
             return self.categorical_crossentropy
+        elif loss == "binary_crossentropy":                                                 # binary crossentropy
+            return self.binary_crossentropy
         else:
             raise ValueError("Invalid loss function")
 
 
+
+    # Activation functions initialization
     def init_activation_functions(self, layers):
         activation_functions = []
         for layer in layers:
-            if layer[1] == "sigmoid":
+            if layer[1] == "sigmoid":                                                       # sigmoid
                 activation_functions.append(self.sigmoid)
-            elif layer[1] == "relu":
+            elif layer[1] == "relu":                                                        # rectified linear unit
                 activation_functions.append(self.relu)
-            elif layer[1] == "leaky_relu":
+            elif layer[1] == "leaky_relu":                                                  # leaky rectified linear unit
                 activation_functions.append(self.leaky_relu)
-            elif layer[1] == "tanh":
+            elif layer[1] == "tanh":                                                        # hyperbolic tangent
                 activation_functions.append(self.tanh)
-            elif layer[1] == "softmax":
+            elif layer[1] == "softmax":                                                     # softmax
                 activation_functions.append(self.softmax)
-            elif layer[1] == "linear":
+            elif layer[1] == "linear":                                                      # linear
                 activation_functions.append(self.linear)
             else:
                 raise ValueError("Invalid activation function")
@@ -94,21 +102,21 @@ class MLP:
 
 
 
-#The sigmoid activation function is an element-wise function that takes as input the activation column vector (for a batch is a matrix), where:
-#if grad=False return a column vector too that has for each component the sigmoidal computation of the corresponding argument component
-#if grad=True return a column vector where the component i is sigmoid(A[i]) * (1.0-sigmoid(A[i]))
-#Remark: input A and output have always the same dimensions
+# The sigmoid activation function is an element-wise function that takes as input the activation column vector (for a batch is a matrix), where:
+# if grad=False return a column vector too that has for each component the sigmoidal computation of the corresponding argument component
+# if grad=True return a column vector where the component i is sigmoid(A[i]) * (1.0-sigmoid(A[i]))
 
     def sigmoid(self, A, grad=False):
         if not grad:
             return 1.0 / (1.0 + np.exp(-A))
         else:
+            # derivative computation
             return self.sigmoid(A) * (1.0 - self.sigmoid(A))
 
 
-#Relu activation function initialize with all zeros a tensor called output that has the same dimensions as the activation tensor argument (A)
-#if grad=False return a tensor where each component is computed by the relu scalar function (max(0.0, x))
-#if grad=True return a tensor where each component is 0 or 1 (derivative of relu is 0 for negative activation value and 1 for null or positive value)
+# Relu activation function initialize with all zeros a tensor called output that has the same dimensions as the activation tensor argument (A)
+# if grad=False return a tensor where each component is computed by the relu scalar function (max(0.0, x))
+# if grad=True return a tensor where each component is 0 or 1 (derivative of relu is 0 for negative activation value and 1 for null or positive value)
 
     def relu(self, A, grad=False):
         output = np.zeros(A.shape)
