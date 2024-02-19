@@ -454,10 +454,72 @@ class MLP:
             tn=0
             fp=0
             fn=0
-            for target_index in range(len(Y[0])): # index([0,0,0,1,0])
-                prediction = self.predict(X=X[target_index],Y=Y[target_index])
-                if np.argmax(Y[target_index]) == np.argmax(prediction):
+            for target_index in range(len(Y.T[0])): # index([0,0,0,1,0])
+                prediction = self.predict(X=X[target_index])
+                if np.argmax(Y[target_index]) == cls and np.argmax(prediction) == cls:
                     tp += 1
+                elif np.argmax(Y[target_index]) != cls and np.argmax(prediction) == cls:
+                    fp += 1
+                elif np.argmax(Y[target_index]) == cls and np.argmax(prediction) != cls:
+                    fn += 1
+                elif np.argmax(Y[target_index]) != cls and np.argmax(prediction) != cls:
+                    tn += 1
+                else:
+                    print("Error")
+
+            classes[cls] = [tp,tn,fp,fn]
+
+        return classes
+    
+    def print_confusion_matrix(self,X,Y, name=None):
+        data = self.create_confusion_matrix(X,Y)
+        for cls in range(len(data)):
+            print(f"Confusion Matrix for class {cls}:")
+            print("\n\t\t\tPredicted Class\n")
+            print("\t\t==================================")
+            # ||           ||          ||
+            print("\t\t||", end="")
+            print("\t\t||\t\t||")
+            # ||    TP     ||    FN    ||
+            print("\t\t||\tTP\t||\tFN\t||")
+            # ||    tp     ||    fn    ||
+            print("\t\t||", end="")
+            print(f"\t{data[cls][0]}\t||\t{data[cls][3]}\t||")
+            # ||           ||          ||
+            print("\t\t||\t\t||\t\t||")
+            print("True Class", end="")
+            print("\t==================================")
+            # ||           ||          ||
+            print("\t\t||", end="")
+            print("\t\t||\t\t||")
+            # ||    FP     ||    TN    ||
+            print("\t\t||\tFP\t||\tTN\t||")
+            # ||    fp     ||    tn    ||
+            print("\t\t||", end="")
+            print(f"\t{data[cls][2]}\t||\t{data[cls][1]}\t||")
+            # ||           ||          ||
+            print("\t\t||\t\t||\t\t||")
+            print("\t\t==================================")
+            print("\n\n")
+
+            # dump same strings to file
+            if name is not None:
+                with open(name+'.txt', "a") as file:
+                    file.write(f"\t\t\t\tConfusion Matrix for class {cls}:\n")
+                    file.write("\n \t\t\t\tPredicted Class\n\n")
+                    file.write("\t\t\t==================================\n")
+                    file.write("\t\t\t||\t\t\t\t||\t\t\t\t||\n")
+                    file.write("\t\t\t||\t\tTP\t\t||\t\tFN\t\t||\n")
+                    file.write(f"\t\t\t||\t\t{data[cls][0]}\t\t||\t\t{data[cls][3]}\t\t||\n")
+                    file.write("\t\t\t||\t\t\t\t||\t\t\t\t||\n")
+                    file.write("True Class\t==================================\n")
+                    file.write("\t\t\t||\t\t\t\t||\t\t\t\t||\n")
+                    file.write("\t\t\t||\t\tFP\t\t||\t\tTN\t\t||\n")
+                    file.write(f"\t\t\t||\t\t{data[cls][2]}\t\t||\t\t{data[cls][1]}\t\t||\n")
+                    file.write("\t\t\t||\t\t\t\t||\t\t\t\t||\n")
+                    file.write("\t\t\t==================================\n")
+                    file.write("\n\n")
+                    
 
 
     def save_model(self, model_name = "model"):
