@@ -1,8 +1,11 @@
+
 # Class MLP is designed to process row vector input and target, in general MLP takes as input a matrix where each row is one train sample
 # and as target a matrix where each row is one target vector
 
 # Internally every calculation is treated according to the conventional algebraic rules (reshaping of the input arguments passed to the net)
 # where each input is a column vector (forming a matrix for multiple samples) that produce an output that is a column vector too
+
+
 
 import os
 from datetime import datetime as dt
@@ -11,6 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import pickle
 import sys
+
 
 
 class MLP:
@@ -65,7 +69,9 @@ class MLP:
         self.activations = [None] * (len(self.layers))                                      # activations list initialized as None
 
 
+
     # Loss function initialization
+        
     def init_loss(self, loss):
         if loss == "mse":                                                                   # mean squared error 
             return self.mse
@@ -81,6 +87,7 @@ class MLP:
 
 
     # Activation functions initialization
+        
     def init_activation_functions(self, layers):
         activation_functions = []
         for layer in layers:
@@ -114,6 +121,7 @@ class MLP:
             return self.sigmoid(A) * (1.0 - self.sigmoid(A))
 
 
+
 # Relu activation function initialize with all zeros a tensor called output that has the same dimensions as the activation tensor argument (A)
 # if grad=False return a tensor where each component is computed by the relu scalar function (max(0.0, x))
 # if grad=True return a tensor where each component is 0 or 1 (derivative of relu is 0 for negative activation value and 1 for null or positive value)
@@ -126,15 +134,16 @@ class MLP:
                     output[row][col] = max(0.0, A[row][col])
             return output
         else:
+            # derivative computation
             for col in range(0, output.shape[1]):
                 for row in range(0, output.shape[0]):
                     output[row][col] = 1 if (A[row][col] > 0) else 0
             return output
 
 
-#Leaky Relu activation function initialize with all zeros a tensor called output that has the same dimensions as the activation tensor argument (A)
-#if grad=False return a tensor where each component is computed by the leaky relu scalar function (y=f(x) -> y=x if x>=0 and y=mx if x<0 where m is negative_slope variable)
-#if grad=True return a tensor where each component is neg_slope or 1 (derivative of leaky relu is neg_slope for negative activation value and 1 for null or positive value)
+# Leaky Relu activation function initialize with all zeros a tensor called output that has the same dimensions as the activation tensor argument (A)
+# if grad=False return a tensor where each component is computed by the leaky relu scalar function (y=f(x) where y=x if x>=0 and y=mx if x<0 and m is negative_slope variable)
+# if grad=True return a tensor where each component is neg_slope or 1 (derivative of leaky relu is neg_slope for negative activation value and 1 for null or positive value)
     
     def leaky_relu(self, A, neg_slope=0.01 ,grad=False):
         output = np.zeros(A.shape)
@@ -144,29 +153,31 @@ class MLP:
                     output[row][col] = A[row][col] if (A[row][col] >= 0) else (A[row][col] * neg_slope)
             return output
         else:
+            # derivative computation
             for col in range(0, output.shape[1]):
                 for row in range(0, output.shape[0]):
                     output[row][col] = 1 if (A[row][col] >= 0) else neg_slope
             return output
 
 
-#The hyperbolic tangent activation function is an element-wise function that takes as input the activation column vector (for batch is a matrix), where:
-#if grad=False return a column vector too that has for each component the tanh computation of the corresponding argument component
-#if grad=True return a column vector where each component is ->  1 - (tanh(a)^2)
+
+# The hyperbolic tangent activation function is an element-wise function that takes as input the activation column vector (for batch is a matrix), where:
+# if grad=False return a column vector too that has for each component the tanh computation of the corresponding argument component
+# if grad=True return a column vector where each component is ->  1 - (tanh(a)^2)
    
     def tanh(self, A, grad=False):
         if not grad:
-            return np.tanh(A)
-            # Numpy implementation of tanh trims the value to prevent overflow
-            # return (np.exp(A) - np.exp(-A)) / (np.exp(A) + np.exp(-A))
+            return np.tanh(A)                                                       # numpy implementation of tanh trims the value to prevent overflow
         else:
+            # derivative computation
             return (1.0 - self.tanh(A)**2)
 
 
-#The softmax activation function is an activation where each output component is function of all the input arguments
-#it is assumed that this activation is used only in output layer in combination with categorical categorical crossentropy loss
-#given this assumption, it is not necessary to calculate the derivative of the activation function since it is integrated into the
-#derivative of the loss function (not included in the loss code, but taken into account in the backward and train method)
+
+# The softmax activation function is an activation where each output component is function of all the input arguments
+# it is assumed that this activation is used only in output layer in combination with categorical categorical crossentropy loss
+# given this assumption, it is not necessary to calculate the derivative of the activation function since it is integrated into the
+# derivative of the loss function (not included in the loss code, but taken into account in the backward and train method)
    
     def softmax(self, A):
         output = np.zeros(A.shape)
@@ -178,32 +189,37 @@ class MLP:
         return output
 
 
-#Linear activation function
+
+# Linear activation function
     
     def linear(self, A, grad=False):
         if not grad:
             return A
         else:
+            # derivative computation
             return np.ones(A.shape)
 
 
-#The mse loss function calculates the error tensor (matrix if mini/full-batch and column vector if online), where:
-#if grad:False return always a scalar value (vector with one element) that is the mean over all the dimension of the squared error tensor
-#(mean over all components == err_squared.mean(axis=0) -> row vector; than mean over all samples == err_squared.mean(axis=0) -> scalar)
-#where err * err is an element wise multiplication so has the same dimensions of err column vector
-#if grad=True return always a tensor that has the same shape as OL(predictions tensor) and Y(targets tensor) and where each component
-#is normalized by mean (1/Y.shape[0] where Y.shape[0] is the dimensionality of each target)
+
+# The mse loss function calculates the error tensor (matrix if mini/full-batch and column vector if online), where:
+# if grad:False return always a scalar value (vector with one element) that is the mean over all the dimension of the squared error tensor
+# (mean over all components == err_squared.mean(axis=0) -> row vector; than mean over all samples == err_squared.mean(axis=0) -> scalar)
+# where err * err is an element wise multiplication so has the same dimensions of err column vector
+# if grad=True return always a tensor that has the same shape as OL(predictions tensor) and Y(targets tensor) and where each component
+# is normalized by mean (1/Y.shape[0] where Y.shape[0] is the dimensionality of each target)
 
     def mse(self, OL, Y, grad=False):
         err = OL - Y
         if not grad:
             return np.mean(err * err)
         else:
+            # derivative computation
             return (2.0 / Y.shape[0]) * err
 
 
-#The mae loss function calculates the absolute error (scalar) that is the mean over all the dimensions of the absolute value error tensor
-#np.mean(tensor) is equivalent to perform two means over a certain axis np.mean(np.mean(err, axis = 1), axis = 0)
+
+# The mae loss function calculates the absolute error (scalar) that is the mean over all the dimensions of the absolute value error tensor
+# np.mean(tensor) is equivalent to perform two means over a certain axis np.mean(np.mean(err, axis = 1), axis = 0)
 # if grad = True the method returns a tensor with the same shape of err, where each component is 1 or -1 where each component is normalized
 # by the scalar n (number of elements in the batch == Y.shape[0])
 
@@ -212,8 +228,10 @@ class MLP:
         if not grad:
             return np.mean(np.abs(err))
         else:
+            # derivative computation
             return np.sign(err)/Y.shape[0]
         
+
 
 # Binary cross-entropy loss function 
 # Used only if the target is a scalar belonging to {0,1} (the assumption is that the output layer must have only one neuron)
@@ -226,19 +244,20 @@ class MLP:
             OL = np.clip(OL, epsilon, 1 - epsilon)      # Clip predicted values to avoid log(0)
             return -np.mean(Y * np.log(OL) + (1 - Y) * np.log(1 - OL))
         else:
+            # derivative computation
             epsilon = 1e-15  
             OL = np.clip(OL, epsilon, 1 - epsilon)  
             return (OL - Y) / (OL * (1 - Y))
 
 
 
-#The categorical crossentropy loss assume 1-hot encoded target for classification task.
-#After limiting the output (OL) in a continuous set (0,1) with extrema excluded, the definition of crossentropy (-np.sum(...))
-#is applied which returns a row vector where each element refers to a training sample.
-#The average of the losses over all the samples is therefore returned
-#Remark: note that in this implementation the natural logarithm is used
-#***Remark*** : It is not necessary to define the derivative of the loss since, for the same reasons as the softmax activation, it is assumed that softmax and categorical crossentropy
-#are used exclusively together, and therefore the derivative of the loss is taken into account in the calculation of the output layer delta in the backward method (and train method too)
+# The categorical crossentropy loss assume 1-hot encoded target for classification task.
+# After limiting the output (OL) in a continuous set (0,1) with extrema excluded, the definition of crossentropy (-np.sum(...))
+# is applied which returns a row vector where each element refers to a training sample.
+# The average of the losses over all the samples is therefore returned
+# Remark: note that in this implementation the natural logarithm is used
+# ***Remark*** : It is not necessary to define the derivative of the loss since, for the same reasons as the softmax activation, it is assumed that softmax and categorical crossentropy
+# are used exclusively together, and therefore the derivative of the loss is taken into account in the calculation of the output layer delta in the backward method (and train method too)
     
     def categorical_crossentropy(self, OL, y):
         epsilon = 1e-15  # Small constant to avoid numerical instability
@@ -248,7 +267,8 @@ class MLP:
         return loss
 
 
-#forward method for each layer compute the activation and the output tensors and collects them in two separated lists
+
+# Forward method for each layer compute the activation and the output tensors and collects them in two separated lists
 
     def forward(self, X):
         for l in range(len(self.net)):
@@ -262,13 +282,13 @@ class MLP:
 
 
 
-#backward method for each layer compute the corresponding delta tensor (matrix for full/mini-batch and column vector for online) and uses it
-#for the calculation of the gradient tensor (matrix for weights and column vector for biases)
-#the product in Delta calculation is always element wise (implies that both argument tensors have the same shape)
-#in the calcuation of the gradient of the loss w.r.t. the weights it is possible to demonstrate that aggregation is intrinsic in the matrix by matrix multiplication
-#in the calculation of the loss gradient w.r.t. biases a sum reduction is needed over the samples dimension (y==axis=1)
-#at the end of each loop iteration (through layers) matrix (weights) and vector (biases) gradients are collected in a list of tuples G[]
-#***Remark*** : extra argument Y wad added to simplify the implementation of categorical crossentropy and softmax and not have to explicitly calculate the derivatives of these functions
+# Backward method for each layer compute the corresponding delta tensor (matrix for full/mini-batch and column vector for online) and uses it
+# for the calculation of the gradient tensor (matrix for weights and column vector for biases)
+# the product in Delta calculation is always element wise (implies that both argument tensors have the same shape)
+# in the calcuation of the gradient of the loss w.r.t. the weights it is possible to demonstrate that aggregation is intrinsic in the matrix by matrix multiplication
+# in the calculation of the loss gradient w.r.t. biases a sum reduction is needed over the samples dimension (y==axis=1)
+# at the end of each loop iteration (through layers) matrix (weights) and vector (biases) gradients are collected in a list of tuples G[]
+# ***Remark*** : extra argument Y wad added to simplify the implementation of categorical crossentropy and softmax and not have to explicitly calculate the derivatives of these functions
 
     def backward(self, X, O, A, loss_derivative, Y):
         L = len(self.net)
@@ -371,7 +391,8 @@ class MLP:
             self.net[l] = (Wl, bl)
 
 
-#In train method X and Y inputs are transposed in order to process row-element inputs and targets as in the algebraic rule fashion
+
+# In train method X and Y inputs are transposed in order to process row-element inputs and targets as in the algebraic rule fashion
 
     def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None, plot=False, early_stopping=None, patience=1, optimizer=None):
         self.lr = lr
@@ -448,6 +469,7 @@ class MLP:
         return self.loss(O[-1], Y)
     
 
+
     def early_stopping(self, early_stopping, patience):
         if not early_stopping in ["loss"]:
             raise ValueError("Invalid early stopping metric")
@@ -457,6 +479,8 @@ class MLP:
                 print(f"Early stopping at epoch {len(self.epoch_val_loss)}")
                 return True
         return False
+
+
 
     def create_confusion_matrix(self,X,Y):
         classes = [ None ] * Y.shape[1]
@@ -513,6 +537,7 @@ class MLP:
 
         return metrics
         
+
     
     def print_eval_metric(self, X=None, Y=None, confusion=None):
         metrics = self.get_eval_metric(X=X, Y=Y, confusion=confusion)
@@ -524,7 +549,6 @@ class MLP:
             print('F1 = \t\t', metrics[3][i])
             print()
         
-
 
     
     def print_confusion_matrix(self,X=None,Y=None, name=None, confusion=None):
@@ -589,10 +613,12 @@ class MLP:
         print(f"Model saved as {model_name}.pkl")
 
 
+
     def load_model(self, model_name = "model"):
         with open(model_name+".pkl", "rb") as file:
             self.net = pickle.load(file)
         print(f"Model loaded from {model_name}.npz")
+
 
 
     def print_net(self):
@@ -609,7 +635,9 @@ class MLP:
             print("=" * 50)
 
 
+
     # Plot epoch_loss and epoch_val_loss
+            
     def plot(self, save=False, fig=None, ax=None, name="loss_plot", show=True):
         if fig is None:
             fig, ax = plt.subplots()
@@ -647,7 +675,9 @@ class MLP:
             plt.pause(0.0005)
         
 
-    # override some default methods
+
+    # Override some default methods
+            
     def __str__(self):
         return f"MLP with {len(self.layers)} layers"
 
