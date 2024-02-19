@@ -474,8 +474,58 @@ class MLP:
 
         return classes
     
-    def print_confusion_matrix(self,X,Y, name=None):
-        data = self.create_confusion_matrix(X,Y)
+
+
+    def get_eval_metric(self, X=None, Y=None, metric=None, confusion=None):
+        if confusion is None:
+            if X is not None and Y is not None:
+                data = self.create_confusion_matrix(X, Y)
+            else : print('Not enough data to compute metric')
+        else : data = confusion
+
+        metrics = [] 
+        if metric == 'accuracy':
+            for cls in data:
+                metrics.append((cls[0] + cls[1]) / (cls[0] + cls[1] + cls[2] + cls[3]))
+        elif metric == 'precision':
+            for cls in data:
+                metrics.append((cls[0]) / (cls[0] + cls[2]))
+        elif metric == 'recall':
+            for cls in data:
+                metrics.append((cls[0]) / (cls[0] + cls[3]))
+        elif metric == 'f1':
+            precision = np.array(self.get_eval_metric(metric = 'precision', confusion = data))
+            recall = np.array(self.get_eval_metric(metric = 'recall', confusion = data))
+            metrics = list((2 * precision * recall) / (precision + recall))
+        else:
+            metrics.append(self.get_eval_metric(metric = 'accuracy', confusion = data))
+            metrics.append(self.get_eval_metric(metric = 'precision', confusion = data))
+            metrics.append(self.get_eval_metric(metric = 'recall', confusion = data))
+            metrics.append(self.get_eval_metric(metric = 'f1', confusion = data))
+
+        return metrics
+        
+    
+    def print_eval_metric(self, X=None, Y=None, confusion=None):
+        metrics = self.get_eval_metric(X=X, Y=Y, confusion=confusion)
+        for i in range(len(metrics[0])):
+            print('Class ', i, ':')
+            print('Accuracy = \t', metrics[0][i])
+            print('Precision = \t', metrics[1][i])
+            print('Recall = \t', metrics[2][i])
+            print('F1 = \t\t', metrics[3][i])
+            print()
+        
+
+
+    
+    def print_confusion_matrix(self,X=None,Y=None, name=None, confusion=None):
+        if confusion is None:
+            if X is not None and Y is not None:
+                data = self.create_confusion_matrix(X, Y)
+            else : print('Not enough data to compute metric')
+        else : data = confusion
+
         for cls in range(len(data)):
             print(f"Confusion Matrix for class {cls}:")
             print("\n\t\t\tPredicted Class\n")
