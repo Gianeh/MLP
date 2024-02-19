@@ -393,7 +393,7 @@ class MLP:
             for i in range(0, len(X.T), batch_size):
                 O, A = self.forward(X[:,i:i+batch_size])
                 if self.layers[-1][1] == "softmax":
-                    G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = 0, Y = Y)
+                    G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = 0, Y = Y[:,i:i+batch_size])
                 else:
                     loss_derivative = self.loss(O[-1], Y[:,i:i+batch_size], grad = True)
                     G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = loss_derivative, Y = 0)
