@@ -64,12 +64,13 @@ net.train(X_train, y_train, batch_size=0, epochs=30000, lr=0.00005, X_Val=X_val,
 
 
 X_train = X[0:int(n*0.75),:]
-y_train = y[0:int(n*0.75):]
+y_train = y_hot[0:int(n*0.75):]
 X_val = X[int(n*0.75):,:]
-y_val = y[int(n*0.75):,:]
+y_val = y_hot[int(n*0.75):,:]
 
 net = MLP(13, [[32, "relu"],[64, "relu"], [64, "sigmoid"], [64, "relu"],[3, "softmax"]], loss="categorical_crossentropy", log_rate=50)
 
 
 
 net.train(X_train, y_train, batch_size=0, epochs=30000, lr=0.00005, X_Val=X_val, Y_Val=y_val, patience=100, plot=True, optimizer="adam")
+
