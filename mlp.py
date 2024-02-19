@@ -602,7 +602,7 @@ class MLP:
 
 
     # Plot epoch_loss and epoch_val_loss
-    def plot(self, save=False, fig=None, ax=None):
+    def plot(self, save=False, fig=None, ax=None, name="loss_plot"):
         if fig is None:
             fig, ax = plt.subplots()
              
@@ -628,7 +628,10 @@ class MLP:
         if save:
             if not os.path.exists("./images"):
                 os.makedirs("./images")
-            plt.savefig("./images/loss_plot"+dt.now().strftime('%d-%m-%Y_%H-%M-%S')+".png")
+            if name == "loss_plot":
+                plt.savefig("./images/loss_plot"+dt.now().strftime('%d-%m-%Y_%H-%M-%S')+".png")
+            else:
+                plt.savefig("./images/"+name+".png")
 
         # show updates online without blocking the code
         plt.show()
