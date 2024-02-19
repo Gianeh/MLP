@@ -117,7 +117,7 @@ class MLP:
         if not grad:
             return 1.0 / (1.0 + np.exp(-A))
         else:
-            # derivative computation
+            # gradient computation
             return self.sigmoid(A) * (1.0 - self.sigmoid(A))
 
 
@@ -134,7 +134,7 @@ class MLP:
                     output[row][col] = max(0.0, A[row][col])
             return output
         else:
-            # derivative computation
+            # gradient computation
             for col in range(0, output.shape[1]):
                 for row in range(0, output.shape[0]):
                     output[row][col] = 1 if (A[row][col] > 0) else 0
@@ -153,7 +153,7 @@ class MLP:
                     output[row][col] = A[row][col] if (A[row][col] >= 0) else (A[row][col] * neg_slope)
             return output
         else:
-            # derivative computation
+            # gradient computation
             for col in range(0, output.shape[1]):
                 for row in range(0, output.shape[0]):
                     output[row][col] = 1 if (A[row][col] >= 0) else neg_slope
@@ -169,7 +169,7 @@ class MLP:
         if not grad:
             return np.tanh(A)                                                       # numpy implementation of tanh trims the value to prevent overflow
         else:
-            # derivative computation
+            # gradient computation
             return (1.0 - self.tanh(A)**2)
 
 
@@ -177,7 +177,7 @@ class MLP:
 # The softmax activation function is an activation where each output component is function of all the input arguments
 # it is assumed that this activation is used only in output layer in combination with categorical categorical crossentropy loss
 # given this assumption, it is not necessary to calculate the derivative of the activation function since it is integrated into the
-# derivative of the loss function (not included in the loss code, but taken into account in the backward and train method)
+# derivative of the loss function (not included in the loss function implementation, but taken into account in the backward and train method)
    
     def softmax(self, A):
         output = np.zeros(A.shape)
@@ -190,20 +190,20 @@ class MLP:
 
 
 
-# Linear activation function
+# Linear activation function if grad=False return a argument activation tensor (A)
+# if grad=True return a tensor where each component is 1 
     
     def linear(self, A, grad=False):
         if not grad:
             return A
         else:
-            # derivative computation
+            # gradient computation
             return np.ones(A.shape)
 
 
 
 # The mse loss function calculates the error tensor (matrix if mini/full-batch and column vector if online), where:
-# if grad:False return always a scalar value (vector with one element) that is the mean over all the dimension of the squared error tensor
-# (mean over all components == err_squared.mean(axis=0) -> row vector; than mean over all samples == err_squared.mean(axis=0) -> scalar)
+# if grad=False return always a scalar value (vector with one element) that is the mean over all the dimension of the squared error tensor
 # where err * err is an element wise multiplication so has the same dimensions of err column vector
 # if grad=True return always a tensor that has the same shape as OL(predictions tensor) and Y(targets tensor) and where each component
 # is normalized by mean (1/Y.shape[0] where Y.shape[0] is the dimensionality of each target)
@@ -213,14 +213,13 @@ class MLP:
         if not grad:
             return np.mean(err * err)
         else:
-            # derivative computation
+            # gradient computation
             return (2.0 / Y.shape[0]) * err
 
 
 
 # The mae loss function calculates the absolute error (scalar) that is the mean over all the dimensions of the absolute value error tensor
-# np.mean(tensor) is equivalent to perform two means over a certain axis np.mean(np.mean(err, axis = 1), axis = 0)
-# if grad = True the method returns a tensor with the same shape of err, where each component is 1 or -1 where each component is normalized
+# if grad = True the method returns a tensor with the same shape of err, where each component is -1 or 1 and is normalized
 # by the scalar n (number of elements in the batch == Y.shape[0])
 
     def mae(self, OL, Y, grad=False):
@@ -228,23 +227,22 @@ class MLP:
         if not grad:
             return np.mean(np.abs(err))
         else:
-            # derivative computation
+            # gradient computation
             return np.sign(err)/Y.shape[0]
         
 
 
-# Binary cross-entropy loss function 
-# Used only if the target is a scalar belonging to {0,1} (the assumption is that the output layer must have only one neuron)
+# Binary cross-entropy loss function is used only if the target is a scalar belonging to (0,1) (where the assumpion is that the output layer must have only one neuron)
 # if grad = True the method returns a vector (batch mode) or a scalar (online mode) that has the same shape of OL (prediction) and Y (target)
-# all the mathematical operations are element-wise (1-Y as the shape of Y <-- broadcasting ...)
+# all the mathematical operations are element-wise (1-Y as the shape of Y due to the broadcasting)
         
     def binary_crossentropy(self, OL, Y, grad=False):
         if not grad:
-            epsilon = 1e-15     # Small value to avoid numerical instability for log(0)
-            OL = np.clip(OL, epsilon, 1 - epsilon)      # Clip predicted values to avoid log(0)
+            epsilon = 1e-15                                         # Small scalar to avoid numerical instability for log(0)
+            OL = np.clip(OL, epsilon, 1 - epsilon)                  # Clip predicted values to avoid log(0)
             return -np.mean(Y * np.log(OL) + (1 - Y) * np.log(1 - OL))
         else:
-            # derivative computation
+            # gradient computation
             epsilon = 1e-15  
             OL = np.clip(OL, epsilon, 1 - epsilon)  
             return (OL - Y) / (OL * (1 - Y))
@@ -252,31 +250,33 @@ class MLP:
 
 
 # The categorical crossentropy loss assume 1-hot encoded target for classification task.
-# After limiting the output (OL) in a continuous set (0,1) with extrema excluded, the definition of crossentropy (-np.sum(...))
-# is applied which returns a row vector where each element refers to a training sample.
+# After limiting the output (OL) in a continuous set (0,1) with extrema excluded, the definition of crossentropy 
+# is applied and it returns a row vector where each element refers to a training sample.
 # The average of the losses over all the samples is therefore returned
-# Remark: note that in this implementation the natural logarithm is used
-# ***Remark*** : It is not necessary to define the derivative of the loss since, for the same reasons as the softmax activation, it is assumed that softmax and categorical crossentropy
+# Remark: It is not necessary to define the derivative of the loss since, for the same reasons as in the softmax activation, it is assumed that softmax and categorical crossentropy
 # are used exclusively together, and therefore the derivative of the loss is taken into account in the calculation of the output layer delta in the backward method (and train method too)
     
     def categorical_crossentropy(self, OL, y):
-        epsilon = 1e-15  # Small constant to avoid numerical instability
-        clipped_OL = np.clip(OL, epsilon, 1 - epsilon)  # Clip values to avoid log(0) or log(1)
-        loss = -np.sum(y * np.log10(clipped_OL), axis=0)  #natural log is used, for base 10 -> np.log10
+        epsilon = 1e-15                                             # Small constant to avoid numerical instability
+        clipped_OL = np.clip(OL, epsilon, 1 - epsilon)              # Clip values to avoid log(0) or log(1)
+        loss = -np.sum(y * np.log10(clipped_OL), axis=0)  
         loss = np.mean(loss)
         return loss
 
 
 
-# Forward method for each layer compute the activation and the output tensors and collects them in two separated lists
+# Forward method for each layer compute the activation scores and the output tensors and collects them in two separated lists
 
     def forward(self, X):
         for l in range(len(self.net)):
             Wl, bl = self.net[l]
+            # input layer
             if l == 0:
                 self.activations[l] = np.matmul(Wl, X) + bl
+            # hidden layer or output layer
             else:
                 self.activations[l] = np.matmul(Wl, self.outputs[l - 1]) + bl
+            # activation function computation
             self.outputs[l] = self.activation_functions[l](self.activations[l])
         return self.outputs, self.activations
 
@@ -284,21 +284,22 @@ class MLP:
 
 # Backward method for each layer compute the corresponding delta tensor (matrix for full/mini-batch and column vector for online) and uses it
 # for the calculation of the gradient tensor (matrix for weights and column vector for biases)
-# the product in Delta calculation is always element wise (implies that both argument tensors have the same shape)
-# in the calcuation of the gradient of the loss w.r.t. the weights it is possible to demonstrate that aggregation is intrinsic in the matrix by matrix multiplication
-# in the calculation of the loss gradient w.r.t. biases a sum reduction is needed over the samples dimension (y==axis=1)
+# the product in Delta calculation is element wise (implies that both argument tensors have the same shape)
 # at the end of each loop iteration (through layers) matrix (weights) and vector (biases) gradients are collected in a list of tuples G[]
-# ***Remark*** : extra argument Y wad added to simplify the implementation of categorical crossentropy and softmax and not have to explicitly calculate the derivatives of these functions
+# Remark: extra argument Y wad added to simplify the implementation of categorical crossentropy so softmax function does not have to explicitly calculate the gradients
 
     def backward(self, X, O, A, loss_derivative, Y):
         L = len(self.net)
         G = [None] * L
         for l in range(L-1, -1, -1):
+            # output layer
             if l == L-1:
+                # is softmax is used in output layer
                 if self.layers[l][1] == "softmax":
                     Delta = O[-1] - Y
                 else:
                     Delta = self.activation_functions[l](A[l], grad=True) * loss_derivative
+            # hidden layers
             else:
                 Wl_plus_1, _ = self.net[l + 1]
                 Delta = self.activation_functions[l](A[l], grad=True) * (np.matmul(Wl_plus_1.T, Delta))
@@ -306,24 +307,27 @@ class MLP:
                 Wl_grad = np.matmul(Delta, O[l - 1].T)
             else:
                 Wl_grad = np.matmul(Delta, X.T)
-
-            bl_grad = np.sum(Delta, axis=1).reshape(self.net[l][1].shape[0], 1)
-            G[l] = (Wl_grad, bl_grad)
+            bl_grad = np.sum(Delta, axis=1).reshape(self.net[l][1].shape[0], 1)         # sum reduction over the samples dimension (axis=1) 
+            G[l] = (Wl_grad, bl_grad)                                                   # gradient tensor for layer l
         return G
 
 
 
+    # Update method which defines the network parameters update rule also including learning rate optimizers
+
     def update(self, G, lr, optimizer):
+        # Basic adaptive learning rate
         if optimizer == "basic":
             lr_interval = [0.01*lr, 10*lr]
 
-            if len(self.epoch_loss) < 2:
+            if len(self.epoch_loss) < 2:                                                # skip the first update
                 pass
             elif self.epoch_loss[-1] > self.epoch_loss[-2]:
                 self.lr = np.clip(self.lr*0.75, lr_interval[0], lr_interval[1])
             else:
                 self.lr = np.clip(self.lr*1.05, lr_interval[0], lr_interval[1])
         
+        # RPROP optimizer
         elif optimizer == "rprop":
             if self.prev_G is not None:
                 for l in range(len(self.net)):
@@ -342,6 +346,7 @@ class MLP:
             self.prev_G = G
             return
         
+        # ADAM optimizer
         elif optimizer == "adam":
             beta1 = 0.9
             beta2 = 0.999
@@ -367,6 +372,7 @@ class MLP:
                 self.v[l][0] = beta2 * self.v[l][0] + (1 - beta2) * Wl_grad**2
                 self.v[l][1] = beta2 * self.v[l][1] + (1 - beta2) * bl_grad**2
                 
+                # Bias-corrected estimates of first and second order moments 
                 m_hat_w = self.m[l][0] / (1 - beta1)
                 m_hat_b = self.m[l][1] / (1 - beta1)
                 v_hat_w = self.v[l][0] / (1 - beta2)
@@ -378,14 +384,13 @@ class MLP:
                 self.net[l] = (Wl, bl)
             return
 
-        print(f"Learning rate: {self.lr}")
+        # Standard update rule
         for l in range(len(self.net)):
             Wl, bl = self.net[l]
             Wl_grad, bl_grad = G[l]
             # clip gradients
             Wl_grad = np.clip(Wl_grad, -self.gradient_clipping, self.gradient_clipping)
             bl_grad = np.clip(bl_grad, -self.gradient_clipping, self.gradient_clipping)
-            #if l == len(self.net)-1: print(Wl_grad , "\n" , bl_grad)
             Wl -= self.lr * Wl_grad
             bl -= self.lr * bl_grad
             self.net[l] = (Wl, bl)
@@ -396,11 +401,11 @@ class MLP:
 
     def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None, plot=False, early_stopping=None, patience=1, optimizer=None):
         self.lr = lr
-        # adjust maximum gradient_clipping value
+        # Adjust maximum gradient_clipping value
         if self.lr > 1: self.gradient_clipping /= self.lr
 
-        X=X.T
-        Y=Y.T
+        X=X.T                                                           # input transposition 
+        Y=Y.T                                                           # target transposition
         if plot:
             plt.ion()
             fig, ax = plt.subplots()
@@ -410,13 +415,13 @@ class MLP:
 
         # Training loop
         for epoch in range(epochs):
-            avg_loss = 0
+            avg_loss = 0                                                # average loss of the current epoch
 
-            if X_Val is not None and Y_Val is not None:
-                val_loss = self.evaluate(X_Val, Y_Val)
+            if X_Val is not None and Y_Val is not None:                 # if validation examples have been provided
+                val_loss = self.evaluate(X_Val, Y_Val)                  # loss calculation on validation data
                 if epoch % self.log_rate == 0:
                     print(f"Epoch {epoch} - Validation Loss: {val_loss}")
-                self.epoch_val_loss.append(val_loss)
+                self.epoch_val_loss.append(val_loss)                    # collect the validation loss
 
             # Batch loop
             for i in range(0, len(X.T), batch_size):
@@ -429,14 +434,14 @@ class MLP:
                 if epoch % self.log_rate == 0:
                     print(f"Epoch {epoch} - Batch {int(i/batch_size)} - Loss: {self.loss(O[-1], Y[:,i:i+batch_size])}")
 
-                avg_loss += self.loss(O[-1], Y[:,i:i+batch_size])
+                avg_loss += self.loss(O[-1], Y[:,i:i+batch_size])       # adding partial loss (over the batch)
 
-                self.update(G, lr=lr, optimizer=optimizer)
+                self.update(G, lr=lr, optimizer=optimizer)              # update step
 
-            self.epoch_loss.append(avg_loss/(len(X.T)/(batch_size+1)))
+            self.epoch_loss.append(avg_loss/(len(X.T)/(batch_size+1)))  # collect the training loss
 
             if early_stopping is not None and X_Val is not None and Y_Val is not None:
-                if self.early_stopping(early_stopping, patience):
+                if self.early_stopping(early_stopping, patience):       # if early stopping criterion
                     break
             
             # Plot current epoch's loss
