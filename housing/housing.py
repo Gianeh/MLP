@@ -5,17 +5,17 @@ from mlp import MLP
 
 
 def load_data_from_file(file):
-    # loading data from file (regression targets are on the last column)
-    Xy = np.loadtxt(file, dtype=np.float32)
+    data = np.loadtxt(file, dtype=np.float32)               # loading data from file (targets are on the last column)
 
-    # splitting data and targets
-    X = Xy[:, 0:-1]
-    y = Xy[:, -1].reshape((X.shape[0], 1))
+    # Splitting inputs and targets
+    X = data[:, 0:-1]
+    y = data[:, -1].reshape((X.shape[0], 1))
     return X, y
 
 
+
 def create_splits_unbalanced(X, y, train_val_fractions=(0.5, 0.25), randomize=True):
-    # randomizing data
+    # Randomizing data
     n = X.shape[0]
     if randomize:
         indices = np.arange(n)
@@ -23,7 +23,7 @@ def create_splits_unbalanced(X, y, train_val_fractions=(0.5, 0.25), randomize=Tr
         X = X[indices, :]
         y = y[indices]
 
-    # collecting indices of the examples that will fall into the training, validation and test sets
+    # Collecting indices of the examples that will fall into the training, validation and test sets
     n = X.shape[0]
     a = round(n * train_val_fractions[0])
     b = a + round(n * train_val_fractions[1])
@@ -32,7 +32,7 @@ def create_splits_unbalanced(X, y, train_val_fractions=(0.5, 0.25), randomize=Tr
     val_set_indices = np.arange(a, b)
     test_set_indices = np.arange(b, n)
 
-    # splitting into training, validation and test sets
+    # Splitting into training, validation and test sets
     X_train = X[train_set_indices, :]
     y_train = y[train_set_indices]
     X_val = X[val_set_indices, :]
@@ -43,8 +43,8 @@ def create_splits_unbalanced(X, y, train_val_fractions=(0.5, 0.25), randomize=Tr
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def normalize_data(X, mean=None, std=None):
 
+def normalize_data(X, mean=None, std=None):
     if mean is None:
         mean = np.mean(X)
     if std is None:
@@ -53,37 +53,36 @@ def normalize_data(X, mean=None, std=None):
 
 
 
-# entry point
 if __name__ == "__main__":
 
     data_X, data_y = load_data_from_file('./housing.data')
 
-    # splitting
+    # Data splitting
     data_X_train, data_y_train, data_X_val, data_y_val, data_X_test, data_y_test = \
         create_splits_unbalanced(data_X, data_y, train_val_fractions=[0.7, 0.15], randomize=True)
 
-    # normalizing data
+    # Normalizing data
     data_X_train, m, s = normalize_data(data_X_train)
     data_X_val, _, _ = normalize_data(data_X_val, m, s)
     data_X_test, _, _ = normalize_data(data_X_test, m, s)
-    #print(data_X_train.shape)
 
     net = MLP(13, [[32, "sigmoid"],[64, "sigmoid"], [64, "sigmoid"], [64, "sigmoid"],[1, "linear"]], loss="mse", log_rate=50)
 
-    #Training phase
+
+    # Training phase
 
     net.train(data_X_train, data_y_train, batch_size=0, epochs=1000, lr=0.00005, X_Val=data_X_val, Y_Val=data_y_val, patience=100, plot=True, optimizer="adam")
     net.plot(save=True)
+    net.save_model()
+
     
-    #net.save_model()
-    '''
-    #Evaluation phase
+    # Evaluation phase
+
     net.load_model()
-    #print(net.evaluate(data_X_val, data_y_val))
     predictions = net.predict(data_X_val)
     targets = data_y_val
 
     for i in range(targets.shape[0]):
         print('Target : ', targets[i][0], ' , Prediction : ' , predictions[0][i], '\n')
-    '''
+
     

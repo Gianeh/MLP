@@ -441,7 +441,7 @@ class MLP:
             self.epoch_loss.append(avg_loss/(len(X.T)/(batch_size+1)))  # collect the training loss
 
             if early_stopping is not None and X_Val is not None and Y_Val is not None:
-                if self.early_stopping(early_stopping, patience):       # if early stopping criterion
+                if self.early_stopping(early_stopping, patience):       # early stopping criterion
                     break
             
             # Plot current epoch's loss
@@ -456,30 +456,32 @@ class MLP:
 
     def predict(self, X):
         if(X.ndim == 1):
-            X = X.reshape(X.shape[0],1)     #reshaping as a column vector (when X is a row vector == single input)
+            X = X.reshape(X.shape[0],1)         # reshaping as a column vector (when X is a row vector)
         else:
-            X=X.T                           #transposing the input matrix (when X is a matrix with row elements == multiple inputs)
+            X=X.T                               # transposing the input matrix (when X is a matrix with row elements)
         O, _ = self.forward(X)
         return O[-1]
 
 
     def evaluate(self, X, Y):
         if(X.ndim == 1):
-            X=X.reshape(X.shape[0],1)
-            Y=Y.reshape(Y.shape[0],1)
+            X=X.reshape(X.shape[0],1)           # reshaping as a column vector (when X is a row vector)
+            Y=Y.reshape(Y.shape[0],1)           # reshaping as a column vector (when Y is a row vector)
         else:
-            X=X.T
-            Y=Y.T
+            X=X.T                               # transposing the input matrix (when X is a matrix with row elements)
+            Y=Y.T                               # transposing the input matrix (when Y is a matrix with row elements)
         O, _ = self.forward(X)
-        return self.loss(O[-1], Y)
+        return self.loss(O[-1], Y)              # loss computation
     
 
+
+    # Early stopping method based on the network loss function
 
     def early_stopping(self, early_stopping, patience):
         if not early_stopping in ["loss"]:
             raise ValueError("Invalid early stopping metric")
         if len(self.epoch_val_loss) > patience:
-            # if for patience epochs the loss is increasing of more x% stop the training
+            # if for patience epochs the loss is increasing stop the training
             if np.all(np.array(self.epoch_val_loss[-patience+1:]) > np.array(self.epoch_val_loss[-patience])):
                 print(f"Early stopping at epoch {len(self.epoch_val_loss)}")
                 return True
@@ -487,14 +489,16 @@ class MLP:
 
 
 
+    # Method to build the confusion matrix for each class
+
     def create_confusion_matrix(self,X,Y):
-        classes = [ None ] * Y.shape[1]
-        for cls in range(len(classes)):
-            tp=0
-            tn=0
-            fp=0
-            fn=0
-            for target_index in range(len(Y.T[0])): # index([0,0,0,1,0])
+        classes = [ None ] * Y.shape[1]                         # list of confusion matrices initialized to None
+        for cls in range(len(classes)):                         # loop over classes
+            tp=0                                                # true positives counter
+            tn=0                                                # true negatives counter
+            fp=0                                                # false positives counter
+            fn=0                                                # false negatives counter
+            for target_index in range(len(Y.T[0])):             # loop over targets
                 prediction = self.predict(X=X[target_index])
                 if np.argmax(Y[target_index]) == cls and np.argmax(prediction) == cls:
                     tp += 1
@@ -513,28 +517,30 @@ class MLP:
     
 
 
+    # Method that outputs a specific evaluation metrics given the argument metric (accuracy, precision, recall, f1) or all the metrics if is None
+
     def get_eval_metric(self, X=None, Y=None, metric=None, confusion=None):
-        if confusion is None:
+        if confusion is None:                                                            # confusion matrix not provided as input
             if X is not None and Y is not None:
-                data = self.create_confusion_matrix(X, Y)
+                data = self.create_confusion_matrix(X, Y)                                # construction of the confusion matrix
             else : print('Not enough data to compute metric')
-        else : data = confusion
+        else : data = confusion                                                          # confusion matrix was given as input
 
         metrics = [] 
-        if metric == 'accuracy':
+        if metric == 'accuracy':                                                         # accuracy metric
             for cls in data:
-                metrics.append((cls[0] + cls[1]) / (cls[0] + cls[1] + cls[2] + cls[3]))
-        elif metric == 'precision':
+                metrics.append((cls[0] + cls[1]) / (cls[0] + cls[1] + cls[2] + cls[3]))  
+        elif metric == 'precision':                                                      # precision metric
             for cls in data:
                 metrics.append((cls[0]) / (cls[0] + cls[2]))
-        elif metric == 'recall':
+        elif metric == 'recall':                                                         # recall metric
             for cls in data:
                 metrics.append((cls[0]) / (cls[0] + cls[3]))
-        elif metric == 'f1':
+        elif metric == 'f1':                                                             # f1 metric
             precision = np.array(self.get_eval_metric(metric = 'precision', confusion = data))
             recall = np.array(self.get_eval_metric(metric = 'recall', confusion = data))
             metrics = list((2 * precision * recall) / (precision + recall))
-        else:
+        else:                                                                            # no argument metric provided
             metrics.append(self.get_eval_metric(metric = 'accuracy', confusion = data))
             metrics.append(self.get_eval_metric(metric = 'precision', confusion = data))
             metrics.append(self.get_eval_metric(metric = 'recall', confusion = data))
@@ -543,10 +549,12 @@ class MLP:
         return metrics
         
 
-    
+
+    # Method to print the elements of the confusion matrix for all classes
+
     def print_eval_metric(self, X=None, Y=None, confusion=None):
-        metrics = self.get_eval_metric(X=X, Y=Y, confusion=confusion)
-        for i in range(len(metrics[0])):
+        metrics = self.get_eval_metric(X=X, Y=Y, confusion=confusion)                   # confusion matrix computation
+        for i in range(len(metrics[0])):                                                # loop over classes
             print('Class ', i, ':')
             print('Accuracy = \t', metrics[0][i])
             print('Precision = \t', metrics[1][i])
@@ -555,15 +563,17 @@ class MLP:
             print()
         
 
+
+    # Method to print the confusion matrix
     
     def print_confusion_matrix(self,X=None,Y=None, name=None, confusion=None):
-        if confusion is None:
+        if confusion is None:                                                           # confusion matrix not provided as input
             if X is not None and Y is not None:
-                data = self.create_confusion_matrix(X, Y)
+                data = self.create_confusion_matrix(X, Y)                               # construction of the confusion matrix
             else : print('Not enough data to compute metric')
-        else : data = confusion
+        else : data = confusion                                                         # confusion matrix was given as input
 
-        for cls in range(len(data)):
+        for cls in range(len(data)):                                                    # loop over classes
             print(f"Confusion Matrix for class {cls}:")
             print("\n\t\t\tPredicted Class\n")
             print("\t\t==================================")
@@ -612,12 +622,16 @@ class MLP:
                     
 
 
+    # Method to save the model parameters
+
     def save_model(self, model_name = "model"):
         with open(model_name+".pkl", "wb") as file:
             pickle.dump(self.net, file)
         print(f"Model saved as {model_name}.pkl")
 
 
+
+    # Method to load the model parameters
 
     def load_model(self, model_name = "model"):
         with open(model_name+".pkl", "rb") as file:
@@ -626,12 +640,14 @@ class MLP:
 
 
 
+    # Method to print the neural network architectural informations
+
     def print_net(self):
         print("\n"+repr(self)+"\n")
         print("=" * 50)
         print("=" * 15 +" MLP Neural Network "+"=" * 15)
         print("=" * 50 + "\n")
-        for l in range(len(self.net)):
+        for l in range(len(self.net)):                              # loop over layers
             Wl, bl = self.net[l]
             print(f"Layer {l} --- Neurons: {bl.shape[0]} --- Activation: {self.layers[l][1]}")
             print(f"W: {Wl.shape} \t b: {bl.shape}\n")
@@ -641,13 +657,11 @@ class MLP:
 
 
 
-    # Plot epoch_loss and epoch_val_loss
+    # Method to plot training and validation losse over epochs
             
     def plot(self, save=False, fig=None, ax=None, name="loss_plot", show=True):
         if fig is None:
             fig, ax = plt.subplots()
-             
-        #_,ax = plt.gfc(), plt.gfa()
 
         ax.plot(self.epoch_loss, label='Training Loss', color='blue')
         if len(self.epoch_val_loss) == len(self.epoch_loss): ax.plot(self.epoch_val_loss, label='Validation Loss', color='orange')
@@ -656,8 +670,8 @@ class MLP:
         ax.set_xlabel('Epochs')
         ax.set_ylabel('Losses')
         ax.set_title('Training Loss')
-        # add color legend
 
+        # add color legend
         legend_elements = [
         Line2D([0], [0], marker='o', color='w', markerfacecolor='orange', markersize=10, label='Validation Loss'),
         Line2D([0], [0], marker='o', color='w', markerfacecolor='blue', markersize=10, label='Training Loss'),
@@ -681,7 +695,7 @@ class MLP:
         
 
 
-    # Override some default methods
+    # Override of default methods
             
     def __str__(self):
         return f"MLP with {len(self.layers)} layers"
