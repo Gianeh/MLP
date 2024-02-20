@@ -265,8 +265,7 @@ class MLP:
 
 
 
-# Forward method for each layer compute the activation scores and the output tensors and collects them in two separated lists
-
+    # Forward method for each layer compute the activation scores and the output tensors and collects them in two separated lists
     def forward(self, X):
         for l in range(len(self.net)):
             Wl, bl = self.net[l]
@@ -314,9 +313,8 @@ class MLP:
 
 
     # Update method which defines the network parameters update rule also including learning rate optimizers
-
     def update(self, G, lr, optimizer):
-        # Basic adaptive learning rate
+        # Basic Adaptive Learning Rate
         if optimizer == "basic":
             lr_interval = [0.01*lr, 10*lr]
 
@@ -327,7 +325,7 @@ class MLP:
             else:
                 self.lr = np.clip(self.lr*1.05, lr_interval[0], lr_interval[1])
         
-        # RPROP optimizer
+        # Resilient Backpropagation - RPROP
         elif optimizer == "rprop":
             if self.prev_G is not None:
                 for l in range(len(self.net)):
@@ -346,7 +344,7 @@ class MLP:
             self.prev_G = G
             return
         
-        # ADAM optimizer
+        # Adaptive Moment Estimation - ADAM
         elif optimizer == "adam":
             beta1 = 0.9
             beta2 = 0.999
@@ -384,7 +382,7 @@ class MLP:
                 self.net[l] = (Wl, bl)
             return
 
-        # Standard update rule
+        # Standard Update Rule
         for l in range(len(self.net)):
             Wl, bl = self.net[l]
             Wl_grad, bl_grad = G[l]
@@ -397,11 +395,10 @@ class MLP:
 
 
 
-# In train method X and Y inputs are transposed in order to process row-element inputs and targets as in the algebraic rule fashion
-
-    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None, plot=False, early_stopping=None, patience=1, optimizer=None):
+    # In train method X and Y inputs are transposed in order to process row-element inputs and targets as in the algebraic rule fashion
+    def train(self, X, Y, batch_size=0, epochs=100, lr=0.001, X_Val=None, Y_Val=None, plot=False, early_stopping=False, patience=1, optimizer=None):
         self.lr = lr
-        # Adjust maximum gradient_clipping value
+        # Adjust maximum gradient_clipping value in case of high learning rate
         if self.lr > 1: self.gradient_clipping /= self.lr
 
         X=X.T                                                           # input transposition 
@@ -429,6 +426,9 @@ class MLP:
                 if self.layers[-1][1] == "softmax":
                     G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = 0, Y = Y[:,i:i+batch_size])
                 else:
+                    if self.loss == self.categorical_crossentropy:
+                        print("Categorical crossentropy loss function requires softmax activation in the output layer")
+                        exit()
                     loss_derivative = self.loss(O[-1], Y[:,i:i+batch_size], grad = True)
                     G = self.backward(X[:,i:i+batch_size], O, A, loss_derivative = loss_derivative, Y = 0)
                 if epoch % self.log_rate == 0:
@@ -440,8 +440,8 @@ class MLP:
 
             self.epoch_loss.append(avg_loss/(len(X.T)/(batch_size+1)))  # collect the training loss
 
-            if early_stopping is not None and X_Val is not None and Y_Val is not None:
-                if self.early_stopping(early_stopping, patience):       # early stopping criterion
+            if early_stopping and X_Val is not None and Y_Val is not None:
+                if self.early_stopping(patience):       # early stopping criterion
                     break
             
             # Plot current epoch's loss
@@ -453,7 +453,7 @@ class MLP:
             plt.ioff()
 
 
-
+    # Predict method that takes as input a row vector (or a matrix with row elements) and returns the output of the network
     def predict(self, X):
         if(X.ndim == 1):
             X = X.reshape(X.shape[0],1)         # reshaping as a column vector (when X is a row vector)
@@ -463,6 +463,7 @@ class MLP:
         return O[-1]
 
 
+    # Evaluate method that takes as input a matrix of input and a matrix of targets and returns the loss value of the predictions
     def evaluate(self, X, Y):
         if(X.ndim == 1):
             X=X.reshape(X.shape[0],1)           # reshaping as a column vector (when X is a row vector)
@@ -474,12 +475,8 @@ class MLP:
         return self.loss(O[-1], Y)              # loss computation
     
 
-
     # Early stopping method based on the network loss function
-
-    def early_stopping(self, early_stopping, patience):
-        if not early_stopping in ["loss"]:
-            raise ValueError("Invalid early stopping metric")
+    def early_stopping(self, patience):
         if len(self.epoch_val_loss) > patience:
             # if for patience epochs the loss is increasing stop the training
             if np.all(np.array(self.epoch_val_loss[-patience+1:]) > np.array(self.epoch_val_loss[-patience])):
@@ -490,7 +487,6 @@ class MLP:
 
 
     # Method to build the confusion matrix for each class
-
     def create_confusion_matrix(self,X,Y):
         classes = [ None ] * Y.shape[1]                         # list of confusion matrices initialized to None
         for cls in range(len(classes)):                         # loop over classes
@@ -518,7 +514,6 @@ class MLP:
 
 
     # Method that outputs a specific evaluation metrics given the argument metric (accuracy, precision, recall, f1) or all the metrics if is None
-
     def get_eval_metric(self, X=None, Y=None, metric=None, confusion=None):
         if confusion is None:                                                            # confusion matrix not provided as input
             if X is not None and Y is not None:
@@ -540,7 +535,7 @@ class MLP:
             precision = np.array(self.get_eval_metric(metric = 'precision', confusion = data))
             recall = np.array(self.get_eval_metric(metric = 'recall', confusion = data))
             metrics = list((2 * precision * recall) / (precision + recall))
-        else:                                                                            # no argument metric provided
+        else:                                                                            # no argument metric provided -> all metrics
             metrics.append(self.get_eval_metric(metric = 'accuracy', confusion = data))
             metrics.append(self.get_eval_metric(metric = 'precision', confusion = data))
             metrics.append(self.get_eval_metric(metric = 'recall', confusion = data))
@@ -551,7 +546,6 @@ class MLP:
 
 
     # Method to print the elements of the confusion matrix for all classes
-
     def print_eval_metric(self, X=None, Y=None, confusion=None):
         metrics = self.get_eval_metric(X=X, Y=Y, confusion=confusion)                   # confusion matrix computation
         for i in range(len(metrics[0])):                                                # loop over classes
@@ -623,7 +617,6 @@ class MLP:
 
 
     # Method to save the model parameters
-
     def save_model(self, model_name = "model"):
         with open(model_name+".pkl", "wb") as file:
             pickle.dump(self.net, file)
@@ -632,7 +625,6 @@ class MLP:
 
 
     # Method to load the model parameters
-
     def load_model(self, model_name = "model"):
         with open(model_name+".pkl", "rb") as file:
             self.net = pickle.load(file)
@@ -640,8 +632,7 @@ class MLP:
 
 
 
-    # Method to print the neural network architectural informations
-
+    # Method to print the neural network architectural structure
     def print_net(self):
         print("\n"+repr(self)+"\n")
         print("=" * 50)
@@ -658,7 +649,6 @@ class MLP:
 
 
     # Method to plot training and validation losse over epochs
-            
     def plot(self, save=False, fig=None, ax=None, name="loss_plot", show=True):
         if fig is None:
             fig, ax = plt.subplots()
@@ -696,7 +686,6 @@ class MLP:
 
 
     # Override of default methods
-            
     def __str__(self):
         return f"MLP with {len(self.layers)} layers"
 
