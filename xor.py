@@ -16,7 +16,7 @@ data_X = np.array([[0.0342810297940277, 0.861838599030015],
 data_y = np.array([1, 1, 1, 1, 0, 0, 0, 0], dtype=np.float32).reshape((8, 1))  # 8x1
 
 
-mlp = MLP(2, [[3, "sigmoid"], [3, "relu"],[1, "sigmoid"]], loss="mae", log_rate=50)
+mlp = MLP(2, [[3, "sigmoid"], [3, "relu"],[1, "sigmoid"]], loss="binary_crossentropy", log_rate=50)
 mlp.train(data_X,data_y, batch_size=2, epochs=1000, lr=0.05, plot=True)
 mlp.plot()
 #print('\n\nPrediction: ', mlp.predict(np.array([0.0456, 1.0365])), '\n')
